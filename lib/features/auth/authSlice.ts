@@ -33,15 +33,15 @@ export const loginUser = createAsyncThunk(
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mock authentication
-      if (credentials.email === 'manager@testcompany.com' && credentials.password === 'password123') {
+      // Mock authentication - use the actual SUPER_ADMIN user from seed data
+      if (credentials.email === 'admin@example.com' && credentials.password === 'password123') {
         const mockUser: User = {
-          id: 17,
-          first_name: 'Company',
-          last_name: 'Manager',
-          email: 'manager@testcompany.com',
-          user_type: 'ADMIN',
-          company_id: 14,
+          id: 13, // Use actual SUPER_ADMIN user ID from seed data
+          first_name: 'John',
+          last_name: 'Superadmin',
+          email: 'admin@example.com',
+          user_type: 'SUPER_ADMIN',
+          company_id: undefined, // SUPER_ADMIN doesn't belong to a specific company
         };
         
         const mockToken = 'mock-jwt-token-123';

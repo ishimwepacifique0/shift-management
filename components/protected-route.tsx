@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { checkAuth } from '@/lib/features/auth/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '@/lib/store';
+import { getCurrentUser, loadFromStorage } from '@/feature/auth/authSlice';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,21 +12,32 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
+  const dispatch = useDispatch<AppDispatch>();
+  const { isAuthenticated, status, isInitialized } = useSelector((state: RootState) => state.auth);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated on mount
-    dispatch(checkAuth());
+    // First, try to load from storage (cookies)
+    dispatch(loadFromStorage());
+    setHasCheckedAuth(true);
   }, [dispatch]);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // If not authenticated after loading from storage, try to get current user
+    if (hasCheckedAuth && !isAuthenticated && status === 'idle') {
+      dispatch(getCurrentUser());
+    }
+  }, [dispatch, isAuthenticated, status, hasCheckedAuth]);
+
+  useEffect(() => {
+    // If still not authenticated after all checks, redirect to login
+    if (hasCheckedAuth && isInitialized && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isInitialized, hasCheckedAuth, router]);
 
-  if (isLoading) {
+  // Show loading only while checking authentication
+  if (!hasCheckedAuth || status === 'loading') {
     return (
       <div className="flex bg-gradient-to-br h-screen justify-center dark:from-slate-950 dark:to-slate-800 dark:via-slate-900 from-slate-50 items-center to-slate-100 via-white">
         <div className="text-center">
@@ -36,6 +48,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
+  // If not authenticated, don't render anything (will redirect)
   if (!isAuthenticated) {
     return null;
   }

@@ -1,17 +1,5 @@
 {
-  "node": {
-    "40ad1e02b6c14e67c9c9573007cd7a641bea25f5d5": {
-      "workers": {
-        "app/login/page": {
-          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fpacifique%2FDownloads%2Fproject%2Fshiftproject%2Fshiftcare-management%2Fapp%2Flogin%2Factions.ts%22%2C%5B%7B%22id%22%3A%2240ad1e02b6c14e67c9c9573007cd7a641bea25f5d5%22%2C%22exportedName%22%3A%22login%22%7D%5D%5D%5D&__client_imported__=true!",
-          "async": false
-        }
-      },
-      "layer": {
-        "app/login/page": "action-browser"
-      }
-    }
-  },
+  "node": {},
   "edge": {},
   "encryptionKey": "OVSbGl2n7PjiecSfl/hPk15nUhBCUdvtpjsD00wXeKI="
 }

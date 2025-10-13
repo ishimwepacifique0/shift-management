@@ -2,6 +2,10 @@
 
 import type * as React from "react"
 import { Calendar, Users, UserCheck, Clock, DollarSign, Settings, BarChart3, LogOut } from "lucide-react"
+import { useDispatch } from "react-redux"
+import { useRouter } from "next/navigation"
+import { logout } from "@/feature/auth/authSlice"
+import { AppDispatch } from "@/lib/store"
 
 import {
   Sidebar,
@@ -76,18 +80,26 @@ const navigationItems = [
         url: "/settings",
         icon: Settings,
         isActive: false,
-      },
-      {
-        title: "Logout",
-        url: "/logout",
-        icon: LogOut,
-        isActive: false,
       }
     ],
   },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const dispatch = useDispatch<AppDispatch>()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout()).unwrap()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Even if logout fails, redirect to login
+      router.push('/login')
+    }
+  }
+
   return (
     <Sidebar {...props}>
       <SidebarHeader className="border-b border-sidebar-border p-4">
@@ -123,7 +135,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ))}
       </SidebarContent>
       <SidebarFooter className="border-sidebar-border border-t p-4">
-        <div className="text-muted-foreground text-xs">© 2024 ShiftCare Management</div>
+        <div className="space-y-2">
+          <SidebarMenuButton 
+            onClick={handleLogout}
+            className="justify-start text-red-600 w-full hover:bg-red-50 hover:text-red-700"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </SidebarMenuButton>
+          <div className="text-muted-foreground text-xs">© 2024 ShiftCare Management</div>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )

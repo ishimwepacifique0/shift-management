@@ -18,21 +18,42 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { Switch } from "@/components/ui/switch"
 import type { Staff, Client, Shift } from "@/types"
+import { useDispatch, useSelector } from "react-redux"
+import { createShift } from "@/feature/shifts/shiftSlice"
+import { AppDispatch, RootState } from "@/lib/store"
+import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
+type FormData = {
+  clientId: string
+  staffId: string
+  careServiceId: string
+  shiftTypeId?: string
+  date: Date
+  startTime: string
+  endTime: string
+  status?: "draft" | "published" | "assigned" | "in_progress" | "completed" | "cancelled"
+  isRecurring?: boolean
+  recurrenceRule?: string
+  notes?: string
+  location?: string
+  instructions?: string
+}
+
 const formSchema = z.object({
-  title: z.string().min(2, { message: "Title must be at least 2 characters." }),
+  clientId: z.string().min(1, { message: "Please select a client." }),
+  staffId: z.string().min(1, { message: "Please select a staff member." }),
+  careServiceId: z.string().min(1, { message: "Please select a care service." }),
+  shiftTypeId: z.string().optional(),
   date: z.date({ required_error: "A date is required." }),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Invalid time format (HH:MM)." }),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, { message: "Invalid time format (HH:MM)." }),
-  type: z.enum(["Support Coordination", "Night Shift", "Standard", "Emergency"]),
-  status: z.enum(["Vacant", "Scheduled", "Completed", "Cancelled"]),
-  assignedStaff: z.array(z.string()).min(1, { message: "At least one staff member must be assigned." }),
-  clientId: z.string().optional(),
+  status: z.enum(["draft", "published", "assigned", "in_progress", "completed", "cancelled"]).default("draft"),
   isRecurring: z.boolean().default(false),
-  recurringPattern: z.enum(["weekly", "monthly"]).optional(),
+  recurrenceRule: z.string().optional(),
   notes: z.string().optional(),
   location: z.string().optional(),
+  instructions: z.string().optional(),
 })
 
 interface AddShiftDrawerProps {
@@ -56,95 +77,210 @@ export function AddShiftDrawer({
   initialStaffId,
   initialClientId,
 }: AddShiftDrawerProps) {
-  const form = useForm<z.infer<typeof formSchema>>({
+  const dispatch = useDispatch<AppDispatch>()
+  const { toast } = useToast()
+  const { user } = useSelector((state: RootState) => state.auth)
+  
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
     defaultValues: {
-      title: "",
+      clientId: initialClientId || "",
+      staffId: initialStaffId || "",
+      careServiceId: "",
+      shiftTypeId: "",
       date: initialDate || new Date(),
       startTime: "09:00",
       endTime: "17:00",
-      type: "Standard",
-      status: "Vacant",
-      assignedStaff: initialStaffId ? [initialStaffId] : [],
-      clientId: initialClientId || "",
+      status: "draft",
       isRecurring: false,
+      recurrenceRule: "",
       notes: "",
       location: "",
+      instructions: "",
     },
   })
 
   const isRecurring = form.watch("isRecurring")
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const newShift: Omit<Shift, "id"> = {
-      title: values.title,
-      date: format(values.date, "yyyy-MM-dd"),
-      startTime: values.startTime,
-      endTime: values.endTime,
-      type: values.type,
-      status: values.status,
-      assignedStaff: values.assignedStaff,
-      clientId: values.clientId || undefined,
-      isRecurring: values.isRecurring,
-      recurringPattern: values.isRecurring ? values.recurringPattern : undefined,
-      notes: values.notes,
-      location: values.location,
+  // Debug logging
+  React.useEffect(() => {
+    console.log('AddShiftDrawer - Clients:', clients)
+    console.log('AddShiftDrawer - Staff:', staff)
+    console.log('AddShiftDrawer - Clients count:', clients?.length)
+    console.log('AddShiftDrawer - Staff count:', staff?.length)
+  }, [clients, staff])
+
+  async function onSubmit(values: FormData) {
+    try {
+      const companyId = user?.company_id || 1 // Get from user context or fallback
+      
+      console.log('Creating shift with company ID:', companyId)
+      console.log('Selected client:', values.clientId)
+      console.log('Selected staff:', values.staffId)
+      
+      const shiftData = {
+        company_id: companyId,
+        client_id: parseInt(values.clientId),
+        care_service_id: parseInt(values.careServiceId),
+        shift_type_id: values.shiftTypeId ? parseInt(values.shiftTypeId) : undefined,
+        start_time: new Date(`${format(values.date, "yyyy-MM-dd")}T${values.startTime}:00.000Z`).toISOString(),
+        end_time: new Date(`${format(values.date, "yyyy-MM-dd")}T${values.endTime}:00.000Z`).toISOString(),
+        status: values.staffId ? "assigned" : "draft", // Auto-assign if staff is selected
+        is_recurring: values.isRecurring || false,
+        recurrence_rule: values.isRecurring ? values.recurrenceRule : undefined,
+        notes: values.notes || undefined,
+        location: values.location || undefined,
+        instructions: values.instructions || undefined,
+        break_minutes: 0,
+        is_active: true,
+      }
+      
+      console.log('Shift creation data:', shiftData)
+      
+      const createdShift = await dispatch(createShift(shiftData)).unwrap()
+      
+      // If staff is selected, create staff assignment
+      if (values.staffId) {
+        // Note: Staff assignment might need to be handled separately depending on backend API
+        console.log('Staff assignment needed for staff ID:', values.staffId)
+      }
+      
+      toast({
+        title: "Success",
+        description: `Shift created successfully for ${clients.find(c => c.id.toString() === values.clientId)?.first_name} ${clients.find(c => c.id.toString() === values.clientId)?.last_name}`,
+      })
+      
+      form.reset()
+      onClose()
+    } catch (error: any) {
+      console.error('Failed to create shift:', error)
+      
+      const errorMessage = error?.message || "Failed to create shift"
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
-    onSave(newShift)
-    form.reset()
-    onClose()
   }
 
   React.useEffect(() => {
     if (isOpen) {
       form.reset({
-        title: "",
+        clientId: initialClientId || "",
+        staffId: initialStaffId || "",
+        careServiceId: "",
+        shiftTypeId: "",
         date: initialDate || new Date(),
         startTime: "09:00",
         endTime: "17:00",
-        type: "Standard",
-        status: "Vacant",
-        assignedStaff: initialStaffId ? [initialStaffId] : [],
-        clientId: initialClientId || "",
+        status: "draft",
         isRecurring: false,
+        recurrenceRule: "",
         notes: "",
         location: "",
+        instructions: "",
       })
     }
   }, [isOpen, initialDate, initialStaffId, initialClientId, form])
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[400px] sm:w-[540px] flex flex-col font-sans">
+      <SheetContent className="flex flex-col w-[400px] font-sans sm:w-[540px]">
         {" "}
         {/* Apply font-sans here */}
-        <SheetHeader className="pb-4 border-b">
+        <SheetHeader className="border-b pb-4">
           <SheetTitle className="text-2xl font-bold">Add New Shift</SheetTitle>
           <SheetDescription className="text-muted-foreground">
             Fill in the details to create a new shift.
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-6 flex-1 overflow-y-auto">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 grid gap-6 overflow-y-auto py-6">
             <FormField
               control={form.control}
-              name="title"
-              render={({ field, fieldState }) => (
+              name="clientId"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel htmlFor={field.name}>Shift Title</FormLabel>
-                  <input
-                    id={field.name}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="e.g., Support Coordination"
-                    value={field.value || ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                    ref={field.ref}
-                    aria-invalid={fieldState.invalid ? "true" : undefined}
-                    aria-describedby={fieldState.error?.message ? `${field.name}-error` : undefined}
-                  />
-                  <FormMessage id={`${field.name}-error`} />
+                  <FormLabel>Client</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={clients.length === 0 ? "Loading clients..." : "Select a client"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {clients.length > 0 ? (
+                        clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.first_name} {c.last_name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-clients" disabled>
+                          {clients.length === 0 ? "Loading clients..." : "No clients available"}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="staffId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assigned Staff</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={staff.length === 0 ? "Loading staff..." : "Select a staff member"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {staff.length > 0 ? (
+                        staff.map((s) => (
+                          <SelectItem key={s.id} value={s.id.toString()}>
+                            {s.user?.first_name} {s.user?.last_name} - {s.qualifications || 'Staff Member'}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-staff" disabled>
+                          {staff.length === 0 ? "Loading staff..." : "No staff available"}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="careServiceId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Care Service</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a care service" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="6">Physical Therapy Exercises</SelectItem>
+                      <SelectItem value="8">Vital Signs Monitoring</SelectItem>
+                      <SelectItem value="9">Morning Personal Care</SelectItem>
+                      <SelectItem value="10">Companionship Activities</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -163,11 +299,11 @@ export function AddShiftDrawer({
                           className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                         >
                           {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          <CalendarIcon className="h-4 w-4 ml-auto opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="p-0 w-auto" align="start">
                       <Calendar
                         mode="single"
                         selected={field.value}
@@ -191,7 +327,7 @@ export function AddShiftDrawer({
                     <FormLabel htmlFor={field.name}>Start Time</FormLabel>
                     <input
                       id={field.name}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex bg-background border border-input h-10 rounded-md text-sm w-full disabled:cursor-not-allowed disabled:opacity-50 file:bg-transparent file:border-0 file:font-medium file:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring placeholder:text-muted-foreground px-3 py-2 ring-offset-background"
                       type="time"
                       value={field.value || ""}
                       onChange={field.onChange}
@@ -213,7 +349,7 @@ export function AddShiftDrawer({
                     <FormLabel htmlFor={field.name}>End Time</FormLabel>
                     <input
                       id={field.name}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex bg-background border border-input h-10 rounded-md text-sm w-full disabled:cursor-not-allowed disabled:opacity-50 file:bg-transparent file:border-0 file:font-medium file:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring placeholder:text-muted-foreground px-3 py-2 ring-offset-background"
                       type="time"
                       value={field.value || ""}
                       onChange={field.onChange}
@@ -231,21 +367,20 @@ export function AddShiftDrawer({
 
             <FormField
               control={form.control}
-              name="type"
+              name="shiftTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Shift Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Shift Type (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a shift type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Standard">Standard</SelectItem>
-                      <SelectItem value="Support Coordination">Support Coordination</SelectItem>
-                      <SelectItem value="Night Shift">Night Shift</SelectItem>
-                      <SelectItem value="Emergency">Emergency</SelectItem>
+                      <SelectItem value="9">Morning Shift</SelectItem>
+                      <SelectItem value="10">Evening Shift</SelectItem>
+                      <SelectItem value="11">Night Shift</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -266,61 +401,12 @@ export function AddShiftDrawer({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Vacant">Vacant</SelectItem>
-                      <SelectItem value="Scheduled">Scheduled</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="assignedStaff"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assigned Staff</FormLabel>
-                  <Select onValueChange={(value) => field.onChange(value ? [value] : [])} value={field.value[0] || ""}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select staff" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {staff.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Client</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select client (optional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">No Client</SelectItem>
-                      {clients.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                      <SelectItem value="assigned">Assigned</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -336,7 +422,7 @@ export function AddShiftDrawer({
                   <FormLabel htmlFor={field.name}>Location</FormLabel>
                   <input
                     id={field.name}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex bg-background border border-input h-10 rounded-md text-sm w-full disabled:cursor-not-allowed disabled:opacity-50 file:bg-transparent file:border-0 file:font-medium file:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring placeholder:text-muted-foreground px-3 py-2 ring-offset-background"
                     placeholder="e.g., Client's Home"
                     value={field.value || ""}
                     onChange={field.onChange}
@@ -356,7 +442,7 @@ export function AddShiftDrawer({
                 control={form.control}
                 name="isRecurring"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <FormItem className="flex flex-row border justify-between p-4 rounded-lg items-center">
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Recurring Shift</FormLabel>
                       <FormDescription>Mark this shift as recurring.</FormDescription>
@@ -372,7 +458,7 @@ export function AddShiftDrawer({
             {isRecurring && (
               <FormField
                 control={form.control}
-                name="recurringPattern"
+                name="recurrenceRule"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Recurring Pattern</FormLabel>
@@ -395,19 +481,31 @@ export function AddShiftDrawer({
 
             <FormField
               control={form.control}
-              name="notes"
+              name="instructions"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
-                  <Textarea placeholder="Any specific instructions or notes..." {...field} />
+                  <FormLabel>Instructions</FormLabel>
+                  <Textarea placeholder="Specific instructions for this shift..." {...field} />
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <SheetFooter className="mt-4 pt-4 border-t">
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <Textarea placeholder="Additional notes or comments..." {...field} />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <SheetFooter className="border-t mt-4 pt-4">
               <Button type="submit" className="w-full">
-                <PlusCircle className="mr-2 h-4 w-4" />
+                <PlusCircle className="h-4 w-4 mr-2" />
                 Add Shift
               </Button>
             </SheetFooter>

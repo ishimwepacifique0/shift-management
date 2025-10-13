@@ -31,44 +31,41 @@ const getShiftColor = (status: Shift["status"]) => {
   }
 }
 
-const getStaffInitials = (staffIds: string[], allStaff: Staff[]) => {
-  return staffIds
-    .map((id) => {
-      const staffMember = allStaff.find((s) => s.id === id)
-      return staffMember?.initials || "??"
-    })
-    .join(", ")
-}
 
 export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellClick }: SchedulerRowProps) {
   const renderLeftColumn = () => {
     if (type === "vacant") {
       return (
-        <div className="flex items-center p-2">
+        <div className="flex p-2 items-center">
           <Badge variant="destructive" className="mr-2">
             VS
           </Badge>
           <div className="flex flex-col">
-            <span className="font-medium text-sm">Vacant Shift</span>
-            <span className="text-xs text-muted-foreground">No vacant shift at the moment</span>
+            <span className="text-sm font-medium">Vacant Shift</span>
+            <span className="text-muted-foreground text-xs">No vacant shift at the moment</span>
           </div>
         </div>
       )
     } else if (type === "staff" && data) {
       const staffMember = data as Staff
       return (
-        <div className="flex items-center p-2">
+        <div className="flex p-2 items-center">
           <Avatar className="h-8 w-8 mr-2">
-            <AvatarImage src={staffMember.photo || `/placeholder.svg?height=32&width=32&query=${staffMember.name}`} />
-            <AvatarFallback>{staffMember.initials}</AvatarFallback>
+            <AvatarImage src={staffMember.user.profile_picture || `/placeholder.svg?height=32&width=32&query=${staffMember.user.first_name}`} />
+            <AvatarFallback>
+              {`${staffMember.user.first_name} ${staffMember.user.last_name}`
+                .split(" ")
+                .map((n) => n[0])
+                .join("")}
+            </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="font-medium text-sm">{staffMember.name}</span>
-            <span className="text-xs text-muted-foreground">{staffMember.weeklyHours} Hours</span>
+            <span className="text-sm font-medium">{`${staffMember.user.first_name} ${staffMember.user.last_name}`}</span>
+            <span className="text-muted-foreground text-xs">{staffMember.position || 'Staff Member'}</span>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto h-6 w-6">
+              <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -82,23 +79,23 @@ export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellCli
     } else if (type === "client" && data) {
       const client = data as Client
       return (
-        <div className="flex items-center p-2">
+        <div className="flex p-2 items-center">
           <Avatar className="h-8 w-8 mr-2">
-            <AvatarImage src={client.photo || `/placeholder.svg?height=32&width=32&query=${client.name}`} />
+            <AvatarImage src={`/placeholder.svg?height=32&width=32&query=${client.first_name}`} />
             <AvatarFallback>
-              {client.name
+              {`${client.first_name} ${client.last_name}`
                 .split(" ")
                 .map((n) => n[0])
                 .join("")}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="font-medium text-sm">{client.name}</span>
-            <span className="text-xs text-muted-foreground">Client</span>
+            <span className="text-sm font-medium">{`${client.first_name} ${client.last_name}`}</span>
+            <span className="text-muted-foreground text-xs">Client</span>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto h-6 w-6">
+              <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -115,17 +112,17 @@ export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellCli
 
   return (
     <div className="grid grid-cols-8 border-b">
-      <div className="border-r min-h-[80px] flex items-center px-2 py-1">{renderLeftColumn()}</div>
+      <div className="flex border-r items-center min-h-[80px] px-2 py-1">{renderLeftColumn()}</div>
       {weekDays.map((day, dayIndex) => {
         const dayShifts = shifts.filter((shift) => {
-          const shiftDate = new Date(shift.date)
+          const shiftDate = new Date(shift.start_time)
           return shiftDate.toDateString() === day.toDateString()
         })
 
         return (
           <div
             key={dayIndex}
-            className="p-1 border-r min-h-[80px] hover:bg-muted/50 cursor-pointer"
+            className="border-r p-1 cursor-pointer hover:bg-muted/50 min-h-[80px]"
             onClick={() =>
               onCellClick(
                 day,
@@ -138,45 +135,59 @@ export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellCli
               <Card key={shift.id} className={`mb-1 ${getShiftColor(shift.status)}`}>
                 <CardContent className="p-2">
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-xs font-medium">
-                        {shift.startTime} - {shift.endTime}
+                        {new Date(shift.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(shift.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </span>
                       <div className="flex gap-1">
-                        {shift.isRecurring && <Repeat className="h-3 w-3" />}
-                        <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
+                        {shift.is_recurring && <Repeat className="h-3 w-3" />}
+                        <Button variant="ghost" size="sm" className="h-4 p-0 w-4">
                           <Edit className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
+                        <Button variant="ghost" size="sm" className="h-4 p-0 w-4">
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="text-xs font-medium">{shift.title}</div>
+                    <div className="text-xs font-medium">{shift.care_service?.name || shift.notes || 'Shift'}</div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex gap-1 items-center">
                       <Users className="h-3 w-3" />
-                      <span className="text-xs">{getStaffInitials(shift.assignedStaff, allStaff)}</span>
+                      <span className="text-xs">
+                        {shift.shift_staff_assignments?.map(assignment => 
+                          `${assignment.staff.user.first_name} ${assignment.staff.user.last_name}`
+                        ).join(', ') || 'Unassigned'}
+                      </span>
                     </div>
 
-                    {shift.status === "Vacant" && (
-                      <Badge variant="secondary" className="text-xs bg-red-200 text-red-800">
-                        Vacant
+                    {shift.status === "draft" && (
+                      <Badge variant="secondary" className="bg-gray-200 text-gray-800 text-xs">
+                        Draft
                       </Badge>
                     )}
-                    {shift.status === "Scheduled" && (
-                      <Badge variant="secondary" className="text-xs bg-blue-200 text-blue-800">
-                        Scheduled
+                    {shift.status === "published" && (
+                      <Badge variant="secondary" className="bg-blue-200 text-blue-800 text-xs">
+                        Published
                       </Badge>
                     )}
-                    {shift.status === "Completed" && (
-                      <Badge variant="secondary" className="text-xs bg-green-200 text-green-800">
+                    {shift.status === "assigned" && (
+                      <Badge variant="secondary" className="bg-yellow-200 text-xs text-yellow-800">
+                        Assigned
+                      </Badge>
+                    )}
+                    {shift.status === "in_progress" && (
+                      <Badge variant="secondary" className="bg-orange-200 text-orange-800 text-xs">
+                        In Progress
+                      </Badge>
+                    )}
+                    {shift.status === "completed" && (
+                      <Badge variant="secondary" className="bg-green-200 text-green-800 text-xs">
                         Completed
                       </Badge>
                     )}
-                    {shift.status === "Cancelled" && (
-                      <Badge variant="secondary" className="text-xs bg-gray-200 text-gray-800">
+                    {shift.status === "cancelled" && (
+                      <Badge variant="secondary" className="bg-red-200 text-red-800 text-xs">
                         Cancelled
                       </Badge>
                     )}
