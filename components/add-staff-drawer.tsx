@@ -135,27 +135,28 @@ export function AddStaffDrawer({
       
       const actualEmail = createdStaff.user?.email || staffData.email
       toast({
-        title: "Success",
-        description: `Staff member ${values.first_name} ${values.last_name} created successfully. Email: ${actualEmail}, Default password: Test@123`,
+        title: "Staff Member Created",
+        description: `${values.first_name} ${values.last_name} has been successfully added to your team. Login credentials: ${actualEmail} / Test@123`,
       })
       form.reset()
       onClose()
     } catch (error: any) {
       console.error('Staff creation error:', error)
       
-      let errorMessage = error?.message || "Failed to create staff member"
+      // Extract the real error message from the response
+      let errorMessage = "Failed to create staff member"
       
-      // Provide more specific error messages
-      if (errorMessage.includes('email') || errorMessage.includes('already exists') || errorMessage.includes('Record already exists')) {
-        errorMessage = "A user with this email already exists. The system tried to generate a unique email but failed. Please try again with a different email address."
-      } else if (errorMessage.includes('company_id')) {
-        errorMessage = "Company ID issue. Please try again or contact support."
-      } else if (errorMessage.includes('Failed to create user')) {
-        errorMessage = "Failed to create user account. Please check the email address and try again."
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
       }
       
+      // Show the actual error message from the backend
       toast({
-        title: "Error",
+        title: "Staff Creation Failed",
         description: errorMessage,
         variant: "destructive",
       })

@@ -22,6 +22,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { createShift } from "@/feature/shifts/shiftSlice"
 import { AppDispatch, RootState } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
+import { shiftStaffAssignmentApi } from "@/lib/api/shiftStaffAssignmentApi"
 import { cn } from "@/lib/utils"
 
 type FormData = {
@@ -141,14 +142,38 @@ export function AddShiftDrawer({
       const createdShift = await dispatch(createShift(shiftData)).unwrap()
       
       // If staff is selected, create staff assignment
-      if (values.staffId) {
-        // Note: Staff assignment might need to be handled separately depending on backend API
-        console.log('Staff assignment needed for staff ID:', values.staffId)
+      if (values.staffId && createdShift) {
+        try {
+          console.log('Creating staff assignment for shift ID:', createdShift.id, 'staff ID:', values.staffId)
+          
+          const assignmentData = {
+            shift_id: createdShift.id,
+            staff_id: parseInt(values.staffId),
+            assignment_status: "assigned",
+            start_time: shiftData.start_time,
+            end_time: shiftData.end_time,
+          }
+          
+          await shiftStaffAssignmentApi.create(assignmentData)
+          window.location.reload()
+          console.log('Staff assignment created successfully')
+        } catch (assignmentError) {
+          console.error('Failed to create staff assignment:', assignmentError)
+          // Don't fail the whole operation if assignment creation fails
+          toast({
+            title: "Warning",
+            description: "Shift created but staff assignment failed. You can assign staff later.",
+            variant: "destructive",
+          })
+        }
       }
       
+      const selectedClient = clients.find(c => c.id.toString() === values.clientId)
+      const selectedStaff = staff.find(s => s.id.toString() === values.staffId)
+      
       toast({
-        title: "Success",
-        description: `Shift created successfully for ${clients.find(c => c.id.toString() === values.clientId)?.first_name} ${clients.find(c => c.id.toString() === values.clientId)?.last_name}`,
+        title: "Shift Created",
+        description: `Shift created successfully for ${selectedClient?.first_name} ${selectedClient?.last_name}${selectedStaff ? ` with ${selectedStaff.user?.first_name} ${selectedStaff.user?.last_name}` : ''}`,
       })
       
       form.reset()
@@ -156,10 +181,20 @@ export function AddShiftDrawer({
     } catch (error: any) {
       console.error('Failed to create shift:', error)
       
-      const errorMessage = error?.message || "Failed to create shift"
+      // Extract the real error message from the response
+      let errorMessage = "Failed to create shift"
       
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      // Show the actual error message from the backend
       toast({
-        title: "Error",
+        title: "Shift Creation Failed",
         description: errorMessage,
         variant: "destructive",
       })
@@ -274,10 +309,11 @@ export function AddShiftDrawer({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="6">Physical Therapy Exercises</SelectItem>
-                      <SelectItem value="8">Vital Signs Monitoring</SelectItem>
-                      <SelectItem value="9">Morning Personal Care</SelectItem>
-                      <SelectItem value="10">Companionship Activities</SelectItem>
+                      <SelectItem value="1">Physical Therapy Exercises</SelectItem>
+                      <SelectItem value="2">Vital Signs Monitoring</SelectItem>
+                      <SelectItem value="3">Morning Personal Care</SelectItem>
+                      <SelectItem value="4">Companionship Activities</SelectItem>
+                      <SelectItem value="5">Medication Administration</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -378,9 +414,10 @@ export function AddShiftDrawer({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="9">Morning Shift</SelectItem>
-                      <SelectItem value="10">Evening Shift</SelectItem>
-                      <SelectItem value="11">Night Shift</SelectItem>
+                      <SelectItem value="1">Morning Shift</SelectItem>
+                      <SelectItem value="2">Evening Shift</SelectItem>
+                      <SelectItem value="3">Night Shift</SelectItem>
+                      <SelectItem value="4">Weekend Shift</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

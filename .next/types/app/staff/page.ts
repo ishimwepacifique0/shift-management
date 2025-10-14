@@ -1,4 +1,4 @@
-// File: /Users/pacifique/Downloads/project/shiftproject/shiftcare-management/app/staff/page.tsx
+// File: C:\Users\Pacifique\Documents\project\shiftcare\shift-management\app\staff\page.tsx
 import * as entry from '../../../../app/staff/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

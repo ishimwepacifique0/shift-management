@@ -9,7 +9,7 @@ import { StatsCard } from "@/components/stats-card"
 import { DataTable } from "@/components/ui/data-table"
 import { useDispatch, useSelector } from "react-redux"
 import { useEffect, useState } from "react"
-import { fetchStaff, deleteStaff } from "@/feature/staff/staffSlice"
+import { fetchStaff, fetchStaffByCompany, deleteStaff } from "@/feature/staff/staffSlice"
 import { RootState, AppDispatch } from "@/lib/store"
 import { Staff } from "@/types"
 import ProtectedRoute from "@/components/protected-route"
@@ -41,37 +41,55 @@ export default function StaffPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      dispatch(fetchStaff())
+      // Use company-specific endpoint if user has a company_id
+      if (user.company_id) {
+        dispatch(fetchStaffByCompany({ companyId: user.company_id })).catch((error) => {
+          toast({
+            title: "Error",
+            description: "Failed to load staff members. Please try again.",
+            variant: "destructive",
+          })
+        })
+      } else {
+        // For SUPER_ADMIN users without company_id, fetch all staff
+        dispatch(fetchStaff()).catch((error) => {
+          toast({
+            title: "Error",
+            description: "Failed to load staff members. Please try again.",
+            variant: "destructive",
+          })
+        })
+      }
     }
-  }, [dispatch, isAuthenticated, user])
+  }, [dispatch, isAuthenticated, user, toast])
 
   const handleDeleteStaff = async (staffMember: Staff) => {
     try {
       await dispatch(deleteStaff(staffMember.id)).unwrap()
       toast({
-        title: "Success",
-        description: `Staff member ${staffMember.user.first_name} ${staffMember.user.last_name} and their user account have been permanently deleted.`,
+        title: "Staff Member Deleted",
+        description: `${staffMember.user.first_name} ${staffMember.user.last_name} and their user account have been permanently removed from the system.`,
       })
       setDeleteDialogOpen(false)
       setStaffToDelete(null)
     } catch (error: any) {
-      const errorMessage = error?.message || "Failed to delete staff member"
+      // Extract the real error message from the response
+      let errorMessage = "Failed to delete staff member"
       
-      // Check if it's the specific "active assignments" error
-      if (errorMessage.toLowerCase().includes("active assignments") || 
-          errorMessage.toLowerCase().includes("cannot delete staff member")) {
-        toast({
-          title: "Cannot Delete Staff Member",
-          description: "This staff member has active shift assignments. Please reassign or complete their shifts before deleting.",
-          variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        })
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
       }
+      
+      // Show the actual error message from the backend
+      toast({
+        title: "Delete Failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
       setDeleteDialogOpen(false)
       setStaffToDelete(null)
     }
@@ -209,7 +227,17 @@ export default function StaffPage() {
                 />
               </div>
 
-              <DataTable columns={staffColumns} data={staff} />
+              {status === "loading" ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-muted-foreground">Loading staff members...</div>
+                </div>
+              ) : status === "failed" && error ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-red-600">Error: {error}</div>
+                </div>
+              ) : (
+                <DataTable columns={staffColumns} data={staff} />
+              )}
             </div>
           </div>
         </SidebarInset>
@@ -225,7 +253,9 @@ export default function StaffPage() {
               This action cannot be undone and will permanently delete both the staff record and their user account.
               <br /><br />
               <strong>Warning:</strong> This will completely remove the staff member and their login access.
-              Staff members with active shift assignments cannot be deleted - please reassign or complete their shifts first.
+              <br /><br />
+              <strong>Note:</strong> Staff members with active shift assignments cannot be deleted. 
+              If this staff member has active assignments, you'll need to reassign or complete their shifts first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

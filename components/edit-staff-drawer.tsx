@@ -104,8 +104,8 @@ export function EditStaffDrawer({ staff, isOpen, onClose }: EditStaffDrawerProps
       await dispatch(updateStaff({ id: staff.id, data: updateData })).unwrap()
       
       toast({
-        title: "Success",
-        description: `Staff member ${staff.user?.first_name} ${staff.user?.last_name} updated successfully.`,
+        title: "Staff Member Updated",
+        description: `${staff.user?.first_name} ${staff.user?.last_name}'s information has been successfully updated.`,
       })
       
       form.reset()
@@ -113,9 +113,21 @@ export function EditStaffDrawer({ staff, isOpen, onClose }: EditStaffDrawerProps
     } catch (error: any) {
       console.error('Staff update error:', error)
       
+      // Extract the real error message from the response
+      let errorMessage = "Failed to update staff member"
+      
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      // Show the actual error message from the backend
       toast({
-        title: "Error",
-        description: error?.message || "Failed to update staff member",
+        title: "Staff Update Failed",
+        description: errorMessage,
         variant: "destructive",
       })
     }

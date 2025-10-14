@@ -40,6 +40,18 @@ export const fetchStaff = createAsyncThunk(
   }
 )
 
+export const fetchStaffByCompany = createAsyncThunk(
+  "staff/fetchStaffByCompany",
+  async ({ companyId, filters }: { companyId: number; filters?: Omit<StaffFilters, 'companyId'> }) => {
+    const response = await staffApi.getStaffByCompany(companyId, filters)
+    console.log('fetchStaffByCompany - Response:', response)
+    if (response.success) {
+      return response.data
+    }
+    throw new Error(response.message || "Failed to fetch staff by company")
+  }
+)
+
 export const fetchStaffById = createAsyncThunk(
   "staff/fetchStaffById",
   async (id: number) => {
@@ -123,6 +135,19 @@ const staffSlice = createSlice({
       .addCase(fetchStaff.rejected, (state, action) => {
         state.status = "failed"
         state.error = action.error.message || "Failed to fetch staff"
+      })
+      .addCase(fetchStaffByCompany.pending, (state) => {
+        state.status = "loading"
+        state.error = null
+      })
+      .addCase(fetchStaffByCompany.fulfilled, (state, action) => {
+        state.status = "succeeded"
+        state.staff = action.payload.data || []
+        state.pagination = action.payload.pagination
+      })
+      .addCase(fetchStaffByCompany.rejected, (state, action) => {
+        state.status = "failed"
+        state.error = action.error.message || "Failed to fetch staff by company"
       })
       .addCase(fetchStaffById.pending, (state) => {
         state.status = "loading"

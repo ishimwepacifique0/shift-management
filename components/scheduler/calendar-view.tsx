@@ -19,6 +19,10 @@ export function CalendarView({ shifts, staff, clients, selectedWeek, onCellClick
     end: endOfWeek(selectedWeek, { weekStartsOn: 1 }), // Sunday
   })
 
+
+
+  console.log('CalendarView - Shifts:', shifts)
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="grid grid-cols-8 border-b border-r">
@@ -39,17 +43,25 @@ export function CalendarView({ shifts, staff, clients, selectedWeek, onCellClick
 
 
       {/* Staff Rows */}
-      {staff.map((staffMember) => (
-        <SchedulerRow
-          key={staffMember.id}
-          type="staff"
-          data={staffMember}
-          shifts={shifts.filter((s) => s.shift_staff_assignments?.some(assignment => assignment.staff_id === staffMember.id))} // Pass all shifts for this staff, row component will filter by day
-          allStaff={staff}
-          weekDays={weekDays}
-          onCellClick={onCellClick}
-        />
-      ))}
+      {staff.length === 0 ? (
+        <div className="flex items-center justify-center h-32">
+          <div className="text-muted-foreground">Loading staff...</div>
+        </div>
+      ) : (
+        staff.map((staffMember) => (
+          <SchedulerRow
+            key={staffMember.id}
+            type="staff"
+            data={staffMember}
+            shifts={shifts.filter((shift) => 
+              shift.shift_staff_assignments?.some(assignment => assignment.staff_id === staffMember.id)
+            )}
+            allStaff={staff}
+            weekDays={weekDays}
+            onCellClick={onCellClick}
+          />
+        ))
+      )}
 
     </div>
   )

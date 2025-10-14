@@ -120,8 +120,8 @@ export function EditClientDrawer({ client, isOpen, onClose }: EditClientDrawerPr
       await dispatch(updateClient({ id: client.id, data: updateData })).unwrap()
       
       toast({
-        title: "Success",
-        description: `Client ${values.first_name} ${values.last_name} updated successfully.`,
+        title: "Client Updated",
+        description: `${values.first_name} ${values.last_name}'s information has been successfully updated.`,
       })
       
       form.reset()
@@ -129,9 +129,21 @@ export function EditClientDrawer({ client, isOpen, onClose }: EditClientDrawerPr
     } catch (error: any) {
       console.error('Client update error:', error)
       
+      // Extract the real error message from the response
+      let errorMessage = "Failed to update client"
+      
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      // Show the actual error message from the backend
       toast({
-        title: "Error",
-        description: error?.message || "Failed to update client",
+        title: "Client Update Failed",
+        description: errorMessage,
         variant: "destructive",
       })
     }

@@ -39,6 +39,17 @@ export const fetchClients = createAsyncThunk(
   }
 )
 
+export const fetchClientsByCompany = createAsyncThunk(
+  "clients/fetchClientsByCompany",
+  async ({ companyId, filters }: { companyId: number; filters?: Omit<ClientFilters, 'company_id'> }) => {
+    const response = await clientApi.getClientsByCompany(companyId, filters)
+    if (response.success) {
+      return response.data
+    }
+    throw new Error(response.message || "Failed to fetch clients by company")
+  }
+)
+
 export const fetchClientById = createAsyncThunk(
   "clients/fetchClientById",
   async (id: number) => {
@@ -111,6 +122,19 @@ const clientSlice = createSlice({
       .addCase(fetchClients.rejected, (state, action) => {
         state.status = "failed"
         state.error = action.error.message || "Failed to fetch clients"
+      })
+      .addCase(fetchClientsByCompany.pending, (state) => {
+        state.status = "loading"
+        state.error = null
+      })
+      .addCase(fetchClientsByCompany.fulfilled, (state, action) => {
+        state.status = "succeeded"
+        state.clients = action.payload.data || []
+        state.pagination = action.payload.pagination
+      })
+      .addCase(fetchClientsByCompany.rejected, (state, action) => {
+        state.status = "failed"
+        state.error = action.error.message || "Failed to fetch clients by company"
       })
       .addCase(fetchClientById.pending, (state) => {
         state.status = "loading"

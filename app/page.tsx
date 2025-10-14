@@ -9,12 +9,13 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { useDispatch, useSelector } from "react-redux"
 import { useEffect } from "react"
 import { fetchShifts, fetchShiftTypes } from "@/feature/shifts/shiftSlice"
-import { fetchStaff } from "@/feature/staff/staffSlice"
-import { fetchClients } from "@/feature/clients/clientSlice"
+import { fetchStaff, fetchStaffByCompany } from "@/feature/staff/staffSlice"
+import { fetchClients, fetchClientsByCompany } from "@/feature/clients/clientSlice"
 import { RootState, AppDispatch } from "@/lib/store"
 import { Staff, Client, Shift } from "@/types"
 import { startOfWeek } from "date-fns"
 import ProtectedRoute from "@/components/protected-route"
+import { toast } from "@/components/ui/use-toast"
 
 // Sample data
 
@@ -31,14 +32,6 @@ export default function SchedulerPage() {
   const { staff } = useSelector((state: RootState) => state.staff)
   const { clients } = useSelector((state: RootState) => state.clients)
 
-  // Debug logging for data loading
-  useEffect(() => {
-    console.log('SchedulerPage - Staff:', staff)
-    console.log('SchedulerPage - Clients:', clients)
-    console.log('SchedulerPage - Staff count:', staff?.length)
-    console.log('SchedulerPage - Clients count:', clients?.length)
-  }, [staff, clients])
-
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
   const [clientFilter, setClientFilter] = React.useState("all")
   const [statusFilter, setStatusFilter] = React.useState("all")
@@ -53,13 +46,25 @@ export default function SchedulerPage() {
   const { isAuthenticated, user, status } = useSelector((state: RootState) => state.auth)
 
   useEffect(() => {
-    if (isAuthenticated && user && status === 'succeeded') {
+    if (isAuthenticated && user) {
+      console.log('SchedulerPage - Fetching data for user:', user)
+      
       dispatch(fetchShifts())
-      dispatch(fetchStaff())
-      dispatch(fetchClients())
       dispatch(fetchShiftTypes())
+      
+      // Use the EXACT same logic as staff page
+      if (user.company_id) {
+        console.log('SchedulerPage - Fetching company-specific data for company ID:', user.company_id)
+        dispatch(fetchStaffByCompany({ companyId: user.company_id }))
+        dispatch(fetchClientsByCompany({ companyId: user.company_id }))
+      } else {
+        console.log('SchedulerPage - Fetching all data for SUPER_ADMIN user')
+        // For SUPER_ADMIN users without company_id, fetch all staff
+        dispatch(fetchStaff())
+        dispatch(fetchClients())
+      }
     }
-  }, [dispatch, isAuthenticated, user, status])
+  }, [dispatch, isAuthenticated, user])
 
   const handleAddShiftClick = () => {
     setInitialDrawerDate(undefined)
@@ -85,6 +90,13 @@ export default function SchedulerPage() {
     // Logic to collapse/expand the sidebar or calendar view
     console.log("Toggle collapse clicked")
   }
+
+  console.log('SchedulerPage - Staff:', staff)
+  console.log('SchedulerPage - Staff count:', staff?.length)
+  console.log('SchedulerPage - User:', user)
+
+  console.log('SchedulerPage - Shifts:', shifts)
+
 
   return (
     <ProtectedRoute>

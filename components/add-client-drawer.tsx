@@ -107,8 +107,8 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
       await dispatch(createClient(clientData)).unwrap()
       
       toast({
-        title: "Success",
-        description: `Client ${values.first_name} ${values.last_name} created successfully.`,
+        title: "Client Created",
+        description: `${values.first_name} ${values.last_name} has been successfully added to your client list.`,
       })
       
       form.reset()
@@ -116,10 +116,20 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
     } catch (error: any) {
       console.error('Client creation error:', error)
       
-      const errorMessage = error?.message || "Failed to create client"
+      // Extract the real error message from the response
+      let errorMessage = "Failed to create client"
       
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      // Show the actual error message from the backend
       toast({
-        title: "Error",
+        title: "Client Creation Failed",
         description: errorMessage,
         variant: "destructive",
       })

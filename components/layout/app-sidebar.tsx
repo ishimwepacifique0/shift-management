@@ -47,29 +47,6 @@ const navigationItems = [
         icon: UserCheck,
         isActive: false,
       },
-      {
-        title: "Shifts",
-        url: "/shifts",
-        icon: Clock,
-        isActive: false,
-      },
-    ],
-  },
-  {
-    title: "Business",
-    items: [
-      {
-        title: "Reports",
-        url: "/reports",
-        icon: BarChart3,
-        isActive: false,
-      },
-      {
-        title: "Invoices",
-        url: "/invoices",
-        icon: DollarSign,
-        isActive: false,
-      },
     ],
   },
   {

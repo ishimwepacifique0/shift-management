@@ -9,7 +9,7 @@ import { StatsCard } from "@/components/stats-card"
 import { DataTable } from "@/components/ui/data-table"
 import { useDispatch, useSelector } from "react-redux"
 import { useEffect, useState } from "react"
-import { fetchClients, deleteClient } from "@/feature/clients/clientSlice"
+import { fetchClients, fetchClientsByCompany, deleteClient } from "@/feature/clients/clientSlice"
 import { RootState, AppDispatch } from "@/lib/store"
 import { Client } from "@/types"
 import ProtectedRoute from "@/components/protected-route"
@@ -30,6 +30,7 @@ import { EditClientDrawer } from "@/components/edit-client-drawer"
 export default function ClientsPage() {
   const dispatch = useDispatch<AppDispatch>()
   const { clients, status, error } = useSelector((state: RootState) => state.clients)
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth)
   const { toast } = useToast()
   
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -38,37 +39,61 @@ export default function ClientsPage() {
   const [editClientDrawerOpen, setEditClientDrawerOpen] = useState(false)
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null)
 
+  console.log('ClientsPage - Clients:', clients)
+
   useEffect(() => {
-    dispatch(fetchClients())
-  }, [dispatch])
+    if (isAuthenticated && user) {
+      // Use company-specific endpoint if user has a company_id
+      if (user.company_id) {
+        dispatch(fetchClientsByCompany({ companyId: user.company_id })).catch((error) => {
+          console.error('Failed to fetch clients by company:', error)
+          toast({
+            title: "Error",
+            description: "Failed to load clients. Please try again.",
+            variant: "destructive",
+          })
+        })
+      } else {
+        // For SUPER_ADMIN users without company_id, fetch all clients
+        dispatch(fetchClients()).catch((error) => {
+          console.error('Failed to fetch clients:', error)
+          toast({
+            title: "Error",
+            description: "Failed to load clients. Please try again.",
+            variant: "destructive",
+          })
+        })
+      }
+    }
+  }, [dispatch, isAuthenticated, user, toast])
 
   const handleDeleteClient = async (client: Client) => {
     try {
       await dispatch(deleteClient(client.id)).unwrap()
       toast({
-        title: "Success",
-        description: `Client ${client.first_name} ${client.last_name} deleted successfully.`,
+        title: "Client Deleted",
+        description: `${client.first_name} ${client.last_name} has been permanently removed from the system.`,
       })
       setDeleteDialogOpen(false)
       setClientToDelete(null)
     } catch (error: any) {
-      const errorMessage = error?.message || "Failed to delete client"
+      // Extract the real error message from the response
+      let errorMessage = "Failed to delete client"
       
-      // Check if it's the specific "active assignments" error
-      if (errorMessage.toLowerCase().includes("active assignments") || 
-          errorMessage.toLowerCase().includes("cannot delete client")) {
-        toast({
-          title: "Cannot Delete Client",
-          description: "This client has active shift assignments. Please reassign or complete their shifts before deleting.",
-          variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        })
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.message) {
+        errorMessage = error.message
       }
+      
+      // Show the actual error message from the backend
+      toast({
+        title: "Delete Failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
       setDeleteDialogOpen(false)
       setClientToDelete(null)
     }
@@ -201,7 +226,17 @@ export default function ClientsPage() {
                 />
               </div>
 
-              <DataTable columns={clientColumns} data={clients} />
+              {status === "loading" ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-muted-foreground">Loading clients...</div>
+                </div>
+              ) : status === "failed" && error ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-red-600">Error: {error}</div>
+                </div>
+              ) : (
+                <DataTable columns={clientColumns} data={clients} />
+              )}
             </div>
           </div>
         </SidebarInset>
@@ -217,7 +252,9 @@ export default function ClientsPage() {
               This action cannot be undone and will permanently remove the client from your system.
               <br /><br />
               <strong>Warning:</strong> This will completely remove the client and their associated data.
-              Clients with active shift assignments cannot be deleted - please reassign or complete their shifts first.
+              <br /><br />
+              <strong>Note:</strong> Clients with active shift assignments cannot be deleted. 
+              If this client has active assignments, you'll need to reassign or complete their shifts first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
