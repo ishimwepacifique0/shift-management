@@ -11,19 +11,22 @@ interface DataTableProps<TData> {
     header: string
     render?: (row: TData) => React.ReactNode
   }[]
-  data: TData[]
+  data: TData[] | undefined | null
   pageSize?: number
 }
 
 export function DataTable<TData>({ columns, data, pageSize = 10 }: DataTableProps<TData>) {
   const [currentPage, setCurrentPage] = React.useState(1)
-  const totalPages = Math.ceil(data.length / pageSize)
+  
+  // Ensure data is always an array
+  const safeData = Array.isArray(data) ? data : []
+  const totalPages = Math.ceil(safeData.length / pageSize)
 
   const currentData = React.useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize
     const endIndex = startIndex + pageSize
-    return data.slice(startIndex, endIndex)
-  }, [data, currentPage, pageSize])
+    return safeData.slice(startIndex, endIndex)
+  }, [safeData, currentPage, pageSize])
 
   const handlePreviousPage = () => {
     setCurrentPage((prev) => Math.max(prev - 1, 1))
@@ -67,7 +70,7 @@ export function DataTable<TData>({ columns, data, pageSize = 10 }: DataTableProp
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
-          Showing {currentData.length} of {data.length} entries.
+          Showing {currentData.length} of {safeData.length} entries.
         </div>
         <div className="space-x-2">
           <Button variant="outline" size="sm" onClick={handlePreviousPage} disabled={currentPage === 1}>

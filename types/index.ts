@@ -92,6 +92,22 @@ export interface ShiftType {
   updated_at: string
 }
 
+export interface ShiftTypeCreate {
+  name: string
+  description?: string
+  duration_hours?: number
+  hourly_rate?: number
+  is_active?: boolean
+}
+
+export interface ShiftTypeUpdate {
+  name?: string
+  description?: string
+  duration_hours?: number
+  hourly_rate?: number
+  is_active?: boolean
+}
+
 export interface ShiftStaffAssignment {
   id: number
   company_id: number
@@ -145,4 +161,101 @@ export interface PaginatedResponse<T> {
     total: number
     totalPages: number
   }
+}
+
+// Care Service related types
+export interface CareService {
+  id: number
+  company_id: number
+  name: string
+  description?: string
+  price_book_id?: number
+  service_type_id?: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  price_book?: PriceBook
+  service_type?: ServiceType
+}
+
+export interface PriceBook {
+  id: number
+  company_id: number
+  name: string
+  rate_per_hour: number
+  service_type_id?: number
+  day_of_week?: string
+  notes?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ServiceType {
+  id: number
+  company_id: number
+  name: string
+  description?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CareServiceCreate {
+  name: string
+  description?: string
+  price_book_id?: number
+  service_type_id?: number
+  is_active?: boolean
+}
+
+export interface CareServiceUpdate {
+  name?: string
+  description?: string
+  price_book_id?: number
+  service_type_id?: number
+  is_active?: boolean
+}
+
+export interface ServiceTypeCreate {
+  name: string
+  description?: string
+  is_active?: boolean
+}
+
+export interface ServiceTypeUpdate {
+  name?: string
+  description?: string
+  is_active?: boolean
+}
+
+export interface PriceBook {
+  id: number
+  company_id: number
+  name: string
+  rate_per_hour: number
+  service_type_id?: number
+  day_of_week?: string
+  notes?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface PriceBookCreate {
+  name: string
+  rate_per_hour: number
+  service_type_id?: number
+  day_of_week?: string
+  notes?: string
+  is_active?: boolean
+}
+
+export interface PriceBookUpdate {
+  name?: string
+  rate_per_hour?: number
+  service_type_id?: number
+  day_of_week?: string
+  notes?: string
+  is_active?: boolean
 }

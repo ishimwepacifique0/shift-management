@@ -1,7 +1,7 @@
 "use client"
 
 import type * as React from "react"
-import { Calendar, Users, UserCheck, Clock, DollarSign, Settings, BarChart3, LogOut } from "lucide-react"
+import { Calendar, Users, UserCheck, Clock, DollarSign, Settings, BarChart3, LogOut, Heart, Tag, BookOpen } from "lucide-react"
 import { useDispatch } from "react-redux"
 import { useRouter } from "next/navigation"
 import { logout } from "@/feature/auth/authSlice"
@@ -49,6 +49,35 @@ const navigationItems = [
       },
     ],
   },
+        {
+          title: "Services",
+          items: [
+            {
+              title: "Care Services",
+              url: "/care-services",
+              icon: Heart,
+              isActive: false,
+            },
+            {
+              title: "Service Types",
+              url: "/service-types",
+              icon: Tag,
+              isActive: false,
+            },
+            {
+              title: "Shift Types",
+              url: "/shift-types",
+              icon: Clock,
+              isActive: false,
+            },
+            {
+              title: "Price Books",
+              url: "/price-books",
+              icon: BookOpen,
+              isActive: false,
+            },
+          ],
+        },
   {
     title: "System",
     items: [

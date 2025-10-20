@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { Edit, Repeat, Trash2, MoreVertical, Users } from "lucide-react"
+import { Edit, Repeat, Trash2, MoreVertical } from "lucide-react"
 import type { Shift, Staff, Client } from "@/types"
 
 interface SchedulerRowProps {
@@ -14,25 +14,31 @@ interface SchedulerRowProps {
   allStaff: Staff[]
   weekDays: Date[]
   onCellClick: (date: Date, staffId?: string, clientId?: string) => void
+  onEditShift?: (shift: Shift) => void
+  onDeleteShift?: (shift: Shift) => void
 }
 
 const getShiftColor = (status: Shift["status"]) => {
   switch (status) {
-    case "Vacant":
-      return "bg-red-100 border-red-200 text-red-800"
-    case "Scheduled":
-      return "bg-blue-100 border-blue-200 text-blue-800"
-    case "Completed":
-      return "bg-green-100 border-green-200 text-green-800"
-    case "Cancelled":
+    case "draft":
       return "bg-gray-100 border-gray-200 text-gray-800"
+    case "published":
+      return "bg-purple-100 border-purple-200 text-purple-800"
+    case "assigned":
+      return "bg-yellow-100 border-yellow-200 text-yellow-800"
+    case "in_progress":
+      return "bg-orange-100 border-orange-200 text-orange-800"
+    case "completed":
+      return "bg-green-100 border-green-200 text-green-800"
+    case "cancelled":
+      return "bg-red-100 border-red-200 text-red-800"
     default:
       return "bg-gray-100 border-gray-200 text-gray-800"
   }
 }
 
 
-export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellClick }: SchedulerRowProps) {
+export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellClick, onEditShift, onDeleteShift }: SchedulerRowProps) {
   const renderLeftColumn = () => {
     if (type === "vacant") {
       return (
@@ -61,7 +67,6 @@ export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellCli
           </Avatar>
           <div className="flex flex-col">
             <span className="text-sm font-medium">{`${staffMember.user.first_name} ${staffMember.user.last_name}`}</span>
-            <span className="text-muted-foreground text-xs">{staffMember.position || 'Staff Member'}</span>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -126,8 +131,8 @@ export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellCli
             onClick={() =>
               onCellClick(
                 day,
-                type === "staff" ? (data as Staff).id : undefined,
-                type === "client" ? (data as Client).id : undefined,
+                type === "staff" ? (data as Staff).id.toString() : undefined,
+                type === "client" ? (data as Client).id.toString() : undefined,
               )
             }
           >
@@ -141,56 +146,37 @@ export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellCli
                       </span>
                       <div className="flex gap-1">
                         {shift.is_recurring && <Repeat className="h-3 w-3" />}
-                        <Button variant="ghost" size="sm" className="h-4 p-0 w-4">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-4 p-0 w-4 hover:bg-white/50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onEditShift?.(shift)
+                          }}
+                        >
                           <Edit className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-4 p-0 w-4">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-4 p-0 w-4 hover:bg-white/50"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onDeleteShift?.(shift)
+                          }}
+                        >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="text-xs font-medium">{shift.care_service?.name || shift.notes || 'Shift'}</div>
-
-                    <div className="flex gap-1 items-center">
-                      <Users className="h-3 w-3" />
-                      <span className="text-xs">
-                        {shift.shift_staff_assignments?.map(assignment => 
-                          `${assignment.staff.user.first_name} ${assignment.staff.user.last_name}`
-                        ).join(', ') || 'Unassigned'}
-                      </span>
+                    <div className="text-xs font-medium">
+                      {shift.care_service?.name || shift.notes || 'Shift'}
                     </div>
 
-                    {shift.status === "draft" && (
-                      <Badge variant="secondary" className="bg-gray-200 text-gray-800 text-xs">
-                        Draft
-                      </Badge>
-                    )}
-                    {shift.status === "published" && (
-                      <Badge variant="secondary" className="bg-blue-200 text-blue-800 text-xs">
-                        Published
-                      </Badge>
-                    )}
-                    {shift.status === "assigned" && (
-                      <Badge variant="secondary" className="bg-yellow-200 text-xs text-yellow-800">
-                        Assigned
-                      </Badge>
-                    )}
-                    {shift.status === "in_progress" && (
-                      <Badge variant="secondary" className="bg-orange-200 text-orange-800 text-xs">
-                        In Progress
-                      </Badge>
-                    )}
-                    {shift.status === "completed" && (
-                      <Badge variant="secondary" className="bg-green-200 text-green-800 text-xs">
-                        Completed
-                      </Badge>
-                    )}
-                    {shift.status === "cancelled" && (
-                      <Badge variant="secondary" className="bg-red-200 text-red-800 text-xs">
-                        Cancelled
-                      </Badge>
-                    )}
+                    {/* Status badge */}
+          
                   </div>
                 </CardContent>
               </Card>

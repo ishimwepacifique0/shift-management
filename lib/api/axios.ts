@@ -23,6 +23,8 @@ apiClient.interceptors.request.use((config) => {
     if (token) {
       config.headers = config.headers ?? {}
       config.headers.Authorization = `Bearer ${token}`
+    } else {
+      console.error('No token found in cookies for request:', config.url)
     }
   }
   return config

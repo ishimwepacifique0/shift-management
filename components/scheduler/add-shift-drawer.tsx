@@ -17,13 +17,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Switch } from "@/components/ui/switch"
-import type { Staff, Client, Shift } from "@/types"
+import type { Staff, Client, Shift, CareService, ServiceType, ShiftType } from "@/types"
 import { useDispatch, useSelector } from "react-redux"
 import { createShift } from "@/feature/shifts/shiftSlice"
 import { AppDispatch, RootState } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { shiftStaffAssignmentApi } from "@/lib/api/shiftStaffAssignmentApi"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useCareServices } from "@/hooks/use-care-services"
+import { useServiceTypes } from "@/hooks/use-service-types"
+import { useShiftTypes } from "@/hooks/use-shift-types"
 
 type FormData = {
   clientId: string
@@ -81,6 +85,9 @@ export function AddShiftDrawer({
   const dispatch = useDispatch<AppDispatch>()
   const { toast } = useToast()
   const { user } = useSelector((state: RootState) => state.auth)
+  const { activeCareServices } = useCareServices()
+  const { activeServiceTypes } = useServiceTypes()
+  const { activeShiftTypes } = useShiftTypes()
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -108,9 +115,15 @@ export function AddShiftDrawer({
   React.useEffect(() => {
     console.log('AddShiftDrawer - Clients:', clients)
     console.log('AddShiftDrawer - Staff:', staff)
+    console.log('AddShiftDrawer - Care Services:', activeCareServices)
+    console.log('AddShiftDrawer - Service Types:', activeServiceTypes)
+    console.log('AddShiftDrawer - Shift Types:', activeShiftTypes)
     console.log('AddShiftDrawer - Clients count:', clients?.length)
     console.log('AddShiftDrawer - Staff count:', staff?.length)
-  }, [clients, staff])
+    console.log('AddShiftDrawer - Care Services count:', activeCareServices?.length)
+    console.log('AddShiftDrawer - Service Types count:', activeServiceTypes?.length)
+    console.log('AddShiftDrawer - Shift Types count:', activeShiftTypes?.length)
+  }, [clients, staff, activeCareServices, activeServiceTypes, activeShiftTypes])
 
   async function onSubmit(values: FormData) {
     try {
@@ -124,7 +137,7 @@ export function AddShiftDrawer({
         company_id: companyId,
         client_id: parseInt(values.clientId),
         care_service_id: parseInt(values.careServiceId),
-        shift_type_id: values.shiftTypeId ? parseInt(values.shiftTypeId) : undefined,
+        shift_type_id: values.shiftTypeId && values.shiftTypeId !== "none" ? parseInt(values.shiftTypeId) : undefined,
         start_time: new Date(`${format(values.date, "yyyy-MM-dd")}T${values.startTime}:00.000Z`).toISOString(),
         end_time: new Date(`${format(values.date, "yyyy-MM-dd")}T${values.endTime}:00.000Z`).toISOString(),
         status: values.staffId ? "assigned" : "draft", // Auto-assign if staff is selected
@@ -309,11 +322,22 @@ export function AddShiftDrawer({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="1">Physical Therapy Exercises</SelectItem>
-                      <SelectItem value="2">Vital Signs Monitoring</SelectItem>
-                      <SelectItem value="3">Morning Personal Care</SelectItem>
-                      <SelectItem value="4">Companionship Activities</SelectItem>
-                      <SelectItem value="5">Medication Administration</SelectItem>
+                      {activeCareServices && activeCareServices.length > 0 ? (
+                        activeCareServices.map((service: CareService) => (
+                          <SelectItem key={service.id} value={service.id.toString()}>
+                            {service.name}
+                            {service.description && ` - ${service.description}`}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2">
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                          </div>
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -414,10 +438,24 @@ export function AddShiftDrawer({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="1">Morning Shift</SelectItem>
-                      <SelectItem value="2">Evening Shift</SelectItem>
-                      <SelectItem value="3">Night Shift</SelectItem>
-                      <SelectItem value="4">Weekend Shift</SelectItem>
+                      <SelectItem value="none">No shift type</SelectItem>
+                      {activeShiftTypes && activeShiftTypes.length > 0 ? (
+                        activeShiftTypes.map((shiftType: ShiftType) => (
+                          <SelectItem key={shiftType.id} value={shiftType.id.toString()}>
+                            {shiftType.name}
+                            {shiftType.description && ` - ${shiftType.description}`}
+                            {` (${shiftType.duration_hours}h - $${shiftType.hourly_rate}/hr)`}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2">
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                          </div>
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

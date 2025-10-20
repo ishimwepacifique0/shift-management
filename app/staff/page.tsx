@@ -192,8 +192,8 @@ export default function StaffPage() {
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          <div className="flex flex-col h-screen">
-            <div className="flex border-b justify-between p-6 items-center">
+          <div className="flex flex-col h-screen overflow-hidden">
+            <div className="flex border-b justify-between p-6 items-center flex-shrink-0">
               <div>
                 <h1 className="text-3xl font-bold">Staff Management</h1>
                 <p className="text-muted-foreground">Manage your team members and their assignments</p>
@@ -204,7 +204,7 @@ export default function StaffPage() {
               </Button>
             </div>
 
-            <div className="flex-1 p-6">
+            <div className="flex-1 p-6 overflow-y-auto">
               <div className="grid gap-6 lg:grid-cols-4 mb-6 md:grid-cols-2">
                 <StatsCard
                   title="Total Staff"

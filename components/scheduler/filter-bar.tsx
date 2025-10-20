@@ -17,6 +17,8 @@ interface FilterBarProps {
   typeFilter: string
   onTypeFilterChange: (value: string) => void
   onToggleCollapse: () => void
+  clients: any[]
+  shiftTypes: any[]
 }
 
 export function FilterBar({
@@ -30,6 +32,8 @@ export function FilterBar({
   typeFilter,
   onTypeFilterChange,
   onToggleCollapse,
+  clients,
+  shiftTypes,
 }: FilterBarProps) {
   const currentWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }) // Monday
 
@@ -54,8 +58,11 @@ export function FilterBar({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Clients</SelectItem>
-            <SelectItem value="john-doe">John Doe</SelectItem>
-            <SelectItem value="jane-smith">Jane Smith</SelectItem>
+            {clients?.map((client) => (
+              <SelectItem key={client.id} value={client.id.toString()}>
+                {client.first_name} {client.last_name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -83,10 +90,11 @@ export function FilterBar({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="standard">Standard</SelectItem>
-            <SelectItem value="night-shift">Night Shift</SelectItem>
-            <SelectItem value="support-coordination">Support Coordination</SelectItem>
-            <SelectItem value="emergency">Emergency</SelectItem>
+            {shiftTypes?.map((type) => (
+              <SelectItem key={type.id} value={type.id.toString()}>
+                {type.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
