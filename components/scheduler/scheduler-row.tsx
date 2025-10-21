@@ -116,8 +116,10 @@ export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellCli
   }
 
   return (
-    <div className="grid grid-cols-8 border-b">
-      <div className="flex border-r items-center min-h-[80px] px-2 py-1">{renderLeftColumn()}</div>
+    <div className="grid grid-cols-8 border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+      <div className="flex border-r border-slate-200 dark:border-slate-700 items-center min-h-[80px] px-2 py-1 bg-slate-50/50 dark:bg-slate-800/50">
+        {renderLeftColumn()}
+      </div>
       {weekDays.map((day, dayIndex) => {
         const dayShifts = shifts.filter((shift) => {
           const shiftDate = new Date(shift.start_time)
@@ -127,60 +129,72 @@ export function SchedulerRow({ type, data, shifts, allStaff, weekDays, onCellCli
         return (
           <div
             key={dayIndex}
-            className="border-r p-1 cursor-pointer hover:bg-muted/50 min-h-[80px]"
-            onClick={() =>
+            className="border-r border-slate-200 dark:border-slate-700 p-1 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-900/20 min-h-[80px] transition-colors relative group"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
               onCellClick(
                 day,
                 type === "staff" ? (data as Staff).id.toString() : undefined,
                 type === "client" ? (data as Client).id.toString() : undefined,
               )
-            }
+            }}
           >
-            {dayShifts.map((shift) => (
-              <Card key={shift.id} className={`mb-1 ${getShiftColor(shift.status)}`}>
-                <CardContent className="p-2">
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-medium">
-                        {new Date(shift.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(shift.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                      </span>
-                      <div className="flex gap-1">
-                        {shift.is_recurring && <Repeat className="h-3 w-3" />}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-4 p-0 w-4 hover:bg-white/50"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onEditShift?.(shift)
-                          }}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-4 p-0 w-4 hover:bg-white/50"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onDeleteShift?.(shift)
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+            {/* Empty cell indicator */}
+            {dayShifts.length === 0 && (
+              <div className="w-full h-full flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                Click to add shift
+              </div>
+            )}
+            
+            <div className="flex flex-col gap-1">
+              {dayShifts.map((shift) => (
+                <Card key={shift.id} className={`${getShiftColor(shift.status)} hover:shadow-md transition-shadow`}>
+                  <CardContent className="p-2">
+                    <div className="flex flex-col">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="text-xs">
+                            {new Date(shift.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(shift.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                          <span className="text-xs">
+                            {shift.care_service?.name || shift.notes || 'Shift'}
+                          </span>
+                          <span className="text-xs">
+                            {shift.status}
+                          </span>
+                        </div>
+                        <div className="flex gap-1">
+                          {shift.is_recurring && <Repeat className="h-3 w-3" />}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-4 p-0 w-4 hover:bg-white/50"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onEditShift?.(shift)
+                            }}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-4 p-0 w-4 hover:bg-white/50"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onDeleteShift?.(shift)
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="text-xs font-medium">
-                      {shift.care_service?.name || shift.notes || 'Shift'}
-                    </div>
-
-                    {/* Status badge */}
-          
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )
       })}

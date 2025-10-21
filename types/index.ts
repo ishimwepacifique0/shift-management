@@ -125,10 +125,10 @@ export interface ShiftStaffAssignment {
 export interface Company {
   id: number
   name: string
-  address: string
-  phone: string
-  email: string
-  website?: string
+  email?: string
+  phone_number?: string
+  location?: string
+  representative_name?: string
   is_active: boolean
   created_at: string
   updated_at: string

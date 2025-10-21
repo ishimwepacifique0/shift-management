@@ -1,4 +1,7 @@
 {
-  "/page": "app/page.js",
+  "/scheduler/page": "app/scheduler/page.js",
+  "/staff/page": "app/staff/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/shifts/page": "app/shifts/page.js",
   "/shift-types/page": "app/shift-types/page.js"
 }

@@ -32,6 +32,7 @@ export interface ShiftFilters {
   client_id?: number
   staff_id?: number
   company_id?: number
+  shift_type_id?: number
   date_from?: string
   date_to?: string
 }
@@ -58,6 +59,7 @@ export const shiftApi = {
     if (filters?.client_id) params.append('client_id', filters.client_id.toString())
     if (filters?.staff_id) params.append('staff_id', filters.staff_id.toString())
     if (filters?.company_id) params.append('company_id', filters.company_id.toString())
+    if (filters?.shift_type_id) params.append('shift_type_id', filters.shift_type_id.toString())
     if (filters?.date_from) params.append('date_from', filters.date_from)
     if (filters?.date_to) params.append('date_to', filters.date_to)
 
