@@ -19,6 +19,7 @@ import ProtectedRoute from "@/components/protected-route"
 import { toast } from "@/components/ui/use-toast"
 import { shiftStaffAssignmentApi } from "@/lib/api/shiftStaffAssignmentApi"
 import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 
 // Sample data
 
@@ -31,9 +32,10 @@ const mondayOfThisWeek = getMondayOfCurrentWeek(today)
 
 export default function SchedulerPage() {
   const dispatch = useDispatch<AppDispatch>()
-  const { shifts, shiftTypes } = useSelector((state: RootState) => state.shifts)
+  const { shifts, shiftTypes, status: shiftsStatus, error: shiftsError } = useSelector((state: RootState) => state.shifts)
   const { staff, status: staffStatus, error: staffError } = useSelector((state: RootState) => state.staff)
   const { clients } = useSelector((state: RootState) => state.clients)
+  const { isAuthenticated, user, status } = useSelector((state: RootState) => state.auth)
 
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date())
   const [clientFilter, setClientFilter] = React.useState("all")
@@ -41,8 +43,17 @@ export default function SchedulerPage() {
   const [typeFilter, setTypeFilter] = React.useState("all")
   const [isCollapsed, setIsCollapsed] = React.useState(false)
 
-  // Use shifts directly from the API (already filtered by backend)
-  const filteredShifts = shifts || []
+  // Filter shifts by company if user has company_id (client-side safety check)
+  const filteredShifts = React.useMemo(() => {
+    if (!shifts) return []
+    
+    // Additional client-side filter by company if needed
+    if (user?.company_id) {
+      return shifts.filter(shift => shift.company_id === user.company_id)
+    }
+    
+    return shifts
+  }, [shifts, user?.company_id])
 
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false)
   const [initialDrawerDate, setInitialDrawerDate] = React.useState<Date | undefined>(undefined)
@@ -51,8 +62,6 @@ export default function SchedulerPage() {
 
   const [isEditDrawerOpen, setIsEditDrawerOpen] = React.useState(false)
   const [selectedShift, setSelectedShift] = React.useState<Shift | null>(null)
-
-  const { isAuthenticated, user, status } = useSelector((state: RootState) => state.auth)
 
   // Function to fetch shifts with current filters
   const fetchShiftsWithFilters = React.useCallback(() => {
@@ -85,29 +94,27 @@ export default function SchedulerPage() {
 
     // Add date range filter (current week)
     const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 })
+    weekStart.setHours(0, 0, 0, 0) // Set to start of day
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekEnd.getDate() + 6)
+    weekEnd.setHours(23, 59, 59, 999) // Set to end of day
     
-    filters.date_from = weekStart.toISOString().split('T')[0]
-    filters.date_to = weekEnd.toISOString().split('T')[0]
-
+    filters.date_from = weekStart.toISOString()
+    filters.date_to = weekEnd.toISOString()
     dispatch(fetchShifts(filters))
   }, [isAuthenticated, user, clientFilter, statusFilter, typeFilter, selectedDate, dispatch])
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('SchedulerPage - Fetching data for user:', user)
       
       fetchShiftsWithFilters()
       dispatch(fetchShiftTypes())
       
       // Use the EXACT same logic as staff page
       if (user.company_id) {
-        console.log('SchedulerPage - Fetching company-specific data for company ID:', user.company_id)
         dispatch(fetchStaffByCompany({ companyId: user.company_id }))
         dispatch(fetchClientsByCompany({ companyId: user.company_id }))
       } else {
-        console.log('SchedulerPage - Fetching all data for SUPER_ADMIN user')
         // For SUPER_ADMIN users without company_id, fetch all staff
         dispatch(fetchStaff())
         dispatch(fetchClients())
@@ -115,12 +122,13 @@ export default function SchedulerPage() {
     }
   }, [dispatch, isAuthenticated, user])
 
-  // Refetch shifts when filters change
+  // Refetch shifts when filters change (removed fetchShiftsWithFilters from deps to avoid infinite loop)
   useEffect(() => {
     if (isAuthenticated && user) {
       fetchShiftsWithFilters()
     }
-  }, [fetchShiftsWithFilters])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientFilter, statusFilter, typeFilter, selectedDate])
 
   const handleAddShiftClick = () => {
     setInitialDrawerDate(undefined)
@@ -138,13 +146,11 @@ export default function SchedulerPage() {
 
   const handleSaveShift = (newShiftData: Omit<Shift, "id">) => {
     // This would dispatch a createShift action
-    console.log("Save shift:", newShiftData)
   }
 
   const handleToggleCollapse = () => {
     setIsCollapsed(!isCollapsed)
     // Logic to collapse/expand the sidebar or calendar view
-    console.log("Toggle collapse clicked")
   }
 
   const handleEditShift = (shift: Shift) => {
@@ -173,11 +179,9 @@ export default function SchedulerPage() {
         description: "Shift deleted successfully",
       })
 
-      // Refresh shifts
-      dispatch(fetchShifts())
+      // Refresh shifts with current filters
+      fetchShiftsWithFilters()
     } catch (error: any) {
-      console.error("Error deleting shift:", error)
-      
       let errorMessage = "Failed to delete shift"
       if (error?.response?.data?.error) {
         errorMessage = error.response.data.error
@@ -197,7 +201,7 @@ export default function SchedulerPage() {
 
   const handleShiftUpdated = () => {
     // Refresh shifts when a shift is updated
-    dispatch(fetchShifts())
+    fetchShiftsWithFilters()
   }
 
 
@@ -223,17 +227,39 @@ export default function SchedulerPage() {
             />
 
             <div className="flex-1 overflow-auto">
-              <CalendarView
-                shifts={filteredShifts}
-                staff={staff}
-                clients={clients}
-                selectedWeek={selectedDate}
-                onCellClick={handleCellClick}
-                onEditShift={handleEditShift}
-                onDeleteShift={handleDeleteShift}
-                staffStatus={staffStatus}
-                staffError={staffError}
-              />
+              {shiftsStatus === "loading" ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                    <p className="text-muted-foreground">Loading shifts...</p>
+                  </div>
+                </div>
+              ) : shiftsError ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-red-600">
+                    <p>Error loading shifts: {shiftsError}</p>
+                    <Button 
+                      onClick={() => fetchShiftsWithFilters()} 
+                      variant="outline" 
+                      className="mt-4"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <CalendarView
+                  shifts={filteredShifts}
+                  staff={staff}
+                  clients={clients}
+                  selectedWeek={selectedDate}
+                  onCellClick={handleCellClick}
+                  onEditShift={handleEditShift}
+                  onDeleteShift={handleDeleteShift}
+                  staffStatus={staffStatus}
+                  staffError={staffError}
+                />
+              )}
             </div>
           </div>
         </SidebarInset>

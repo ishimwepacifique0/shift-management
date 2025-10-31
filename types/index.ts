@@ -28,7 +28,8 @@ export interface Staff {
   availability_notes?: string
   hire_date?: string
   termination_date?: string
-  documents?: string
+  employment_type?: 'PART_TIME' | 'FULL_TIME' | 'CASUAL' | 'CONTRACTOR' | 'OTHER'
+  documents?: string // JSON array of document URLs
   is_active: boolean
   created_at: string
   updated_at: string
@@ -46,6 +47,7 @@ export interface Client {
   emergency_contact_name?: string
   emergency_contact_phone?: string
   additional_notes?: string
+  documents?: string // JSON array of document URLs
   is_active: boolean
   email?: string
   phone?: string
@@ -119,7 +121,8 @@ export interface ShiftStaffAssignment {
   notes?: string
   created_at: string
   updated_at: string
-  staff: Staff
+  staff?: Staff
+  shift?: Shift
 }
 
 export interface Company {

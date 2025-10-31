@@ -56,12 +56,12 @@ export const shiftApi = {
     if (filters?.limit) params.append('limit', filters.limit.toString())
     if (filters?.search) params.append('search', filters.search)
     if (filters?.status) params.append('status', filters.status)
-    if (filters?.client_id) params.append('client_id', filters.client_id.toString())
-    if (filters?.staff_id) params.append('staff_id', filters.staff_id.toString())
-    if (filters?.company_id) params.append('company_id', filters.company_id.toString())
-    if (filters?.shift_type_id) params.append('shift_type_id', filters.shift_type_id.toString())
-    if (filters?.date_from) params.append('date_from', filters.date_from)
-    if (filters?.date_to) params.append('date_to', filters.date_to)
+    if (filters?.client_id) params.append('clientId', filters.client_id.toString())
+    if (filters?.staff_id) params.append('staffId', filters.staff_id.toString())
+    if (filters?.company_id) params.append('companyId', filters.company_id.toString())
+    if (filters?.shift_type_id) params.append('shiftTypeId', filters.shift_type_id.toString())
+    if (filters?.date_from) params.append('startDate', filters.date_from)
+    if (filters?.date_to) params.append('endDate', filters.date_to)
 
     const response = await apiClient.get(`${PathVariable.SHIFTS}?${params.toString()}`)
     return response.data
@@ -99,6 +99,22 @@ export const shiftApi = {
     if (filters?.date_to) params.append('date_to', filters.date_to)
 
     const response = await apiClient.get(`${PathVariable.SHIFTS_BY_CLIENT}/${clientId}?${params.toString()}`)
+    return response.data
+  },
+
+  getShiftsByCompany: async (companyId: number, filters?: Omit<ShiftFilters, 'company_id'>): Promise<ApiResponse<PaginatedResponse<Shift>>> => {
+    const params = new URLSearchParams()
+    if (filters?.page) params.append('page', filters.page.toString())
+    if (filters?.limit) params.append('limit', filters.limit.toString())
+    if (filters?.search) params.append('search', filters.search)
+    if (filters?.status) params.append('status', filters.status)
+    if (filters?.client_id) params.append('client_id', filters.client_id.toString())
+    if (filters?.staff_id) params.append('staff_id', filters.staff_id.toString())
+    if (filters?.shift_type_id) params.append('shift_type_id', filters.shift_type_id.toString())
+    if (filters?.date_from) params.append('date_from', filters.date_from)
+    if (filters?.date_to) params.append('date_to', filters.date_to)
+
+    const response = await apiClient.get(`/shifts/company/${companyId}?${params.toString()}`)
     return response.data
   },
 

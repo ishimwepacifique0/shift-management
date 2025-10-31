@@ -12,6 +12,7 @@ export interface CreateStaffData {
   availability_notes?: string
   hire_date?: string
   termination_date?: string
+  employment_type?: 'PART_TIME' | 'FULL_TIME' | 'CASUAL' | 'CONTRACTOR' | 'OTHER'
   documents?: string
 }
 
@@ -28,6 +29,7 @@ export interface CreateCompanyStaffData {
   availability_notes?: string
   hire_date?: string
   termination_date?: string
+  employment_type?: 'PART_TIME' | 'FULL_TIME' | 'CASUAL' | 'CONTRACTOR' | 'OTHER'
   documents?: string
 }
 
@@ -92,6 +94,21 @@ export const staffApi = {
   // Company-specific staff creation (automatically uses user's company_id)
   createCompanyStaff: async (data: CreateCompanyStaffData): Promise<ApiResponse<Staff>> => {
     const response = await apiClient.post(PathVariable.COMPANY_STAFF, data)
+    return response.data
+  },
+
+  // Upload documents for staff member
+  uploadStaffDocuments: async (id: number, files: File[], category: string): Promise<ApiResponse<Staff>> => {
+    const formData = new FormData()
+    files.forEach(file => {
+      formData.append('documents', file)
+    })
+    formData.append('category', category)
+    const response = await apiClient.post(`${PathVariable.STAFF_BY_ID}/${id}/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
     return response.data
   }
 }

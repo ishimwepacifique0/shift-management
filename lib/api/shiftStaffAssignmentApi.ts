@@ -23,6 +23,7 @@ export interface ShiftStaffAssignment {
   is_active: boolean
   created_at: string
   updated_at: string
+  shift?: any // Shift object with client, care_service, etc.
 }
 
 export const shiftStaffAssignmentApi = {
@@ -48,6 +49,11 @@ export const shiftStaffAssignmentApi = {
 
   delete: async (id: number): Promise<ApiResponse<void>> => {
     const response = await apiClient.delete(`/shift-staff-assignments/${id}`)
+    return response.data
+  },
+
+  getByStaff: async (staffId: number): Promise<ApiResponse<ShiftStaffAssignment[]>> => {
+    const response = await apiClient.get(`/shift-staff-assignments/staff/${staffId}`)
     return response.data
   }
 }

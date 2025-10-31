@@ -4,7 +4,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Users, UserCheck, UserX, CalendarCheck } from "lucide-react"
+import { Plus, Edit, Trash2, Users, UserCheck, UserX, CalendarCheck, Upload, Eye } from "lucide-react"
 import { StatsCard } from "@/components/stats-card"
 import { DataTable } from "@/components/ui/data-table"
 import { useDispatch, useSelector } from "react-redux"
@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { AddClientDrawer } from "@/components/add-client-drawer"
 import { EditClientDrawer } from "@/components/edit-client-drawer"
+import { DocumentUploadModal } from "@/components/document-upload-modal"
+import { clientApi } from "@/lib/api/clientApi"
 
 export default function ClientsPage() {
   const dispatch = useDispatch<AppDispatch>()
@@ -38,6 +40,8 @@ export default function ClientsPage() {
   const [addClientDrawerOpen, setAddClientDrawerOpen] = useState(false)
   const [editClientDrawerOpen, setEditClientDrawerOpen] = useState(false)
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [clientForUpload, setClientForUpload] = useState<Client | null>(null)
 
   console.log('ClientsPage - Clients:', clients)
 
@@ -163,6 +167,15 @@ export default function ClientsPage() {
       header: "Actions",
       render: (row: Client) => (
         <div className="flex space-x-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.location.href = `/clients/${row.id}`}
+            title="View details"
+            className="text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button 
             variant="ghost" 
             size="sm" 
@@ -171,6 +184,18 @@ export default function ClientsPage() {
             className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
           >
             <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setClientForUpload(row)
+              setUploadModalOpen(true)
+            }}
+            title="Upload documents"
+            className="text-green-600 hover:bg-green-50 hover:text-green-700"
+          >
+            <Upload className="h-4 w-4" />
           </Button>
           <Button 
             variant="ghost" 
@@ -283,6 +308,43 @@ export default function ClientsPage() {
           setEditClientDrawerOpen(false)
           setClientToEdit(null)
         }} 
+      />
+
+      {/* Document Upload Modal */}
+      <DocumentUploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => {
+          setUploadModalOpen(false)
+          setClientForUpload(null)
+        }}
+        onUpload={async (files, category) => {
+          if (!clientForUpload) return
+          try {
+            const response = await clientApi.uploadClientDocuments(clientForUpload.id, files, category)
+            if (response.success) {
+              toast({
+                title: "Documents Uploaded",
+                description: `${files.length} document(s) uploaded successfully`,
+              })
+              // Refresh clients list
+              if (user?.company_id) {
+                dispatch(fetchClientsByCompany({ companyId: user.company_id }))
+              } else {
+                dispatch(fetchClients())
+              }
+            }
+          } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || "Failed to upload documents"
+            toast({
+              title: "Upload Failed",
+              description: errorMessage,
+              variant: "destructive",
+            })
+            throw error
+          }
+        }}
+        title="Upload Client Documents"
+        description="Select a category and upload documents for this client"
       />
     </ProtectedRoute>
   )

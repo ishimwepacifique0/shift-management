@@ -4,7 +4,8 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Users, UserCheck, UserX, Clock } from "lucide-react"
+import { Plus, Edit, Trash2, Users, UserCheck, UserX, Clock, Upload, Eye } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { StatsCard } from "@/components/stats-card"
 import { DataTable } from "@/components/ui/data-table"
 import { useDispatch, useSelector } from "react-redux"
@@ -26,9 +27,12 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { AddStaffDrawer } from "@/components/add-staff-drawer"
 import { EditStaffDrawer } from "@/components/edit-staff-drawer"
+import { DocumentUploadModal } from "@/components/document-upload-modal"
+import { staffApi } from "@/lib/api/staffApi"
 
 export default function StaffPage() {
   const dispatch = useDispatch<AppDispatch>()
+  const router = useRouter()
   const { staff, status, error } = useSelector((state: RootState) => state.staff)
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth)
   const { toast } = useToast()
@@ -38,6 +42,8 @@ export default function StaffPage() {
   const [addStaffDrawerOpen, setAddStaffDrawerOpen] = useState(false)
   const [editStaffDrawerOpen, setEditStaffDrawerOpen] = useState(false)
   const [staffToEdit, setStaffToEdit] = useState<Staff | null>(null)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [staffForUpload, setStaffForUpload] = useState<Staff | null>(null)
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -167,11 +173,32 @@ export default function StaffPage() {
           <Button 
             variant="ghost" 
             size="sm" 
+            onClick={() => router.push(`/staff/${row.id}`)}
+            title="View details"
+            className="text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
             onClick={() => openEditDialog(row)}
             title="Edit staff member"
             className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
           >
             <Edit className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              setStaffForUpload(row)
+              setUploadModalOpen(true)
+            }}
+            title="Upload documents"
+            className="text-green-600 hover:bg-green-50 hover:text-green-700"
+          >
+            <Upload className="h-4 w-4" />
           </Button>
           <Button 
             variant="ghost" 
@@ -284,6 +311,43 @@ export default function StaffPage() {
           setEditStaffDrawerOpen(false)
           setStaffToEdit(null)
         }} 
+      />
+
+      {/* Document Upload Modal */}
+      <DocumentUploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => {
+          setUploadModalOpen(false)
+          setStaffForUpload(null)
+        }}
+        onUpload={async (files, category) => {
+          if (!staffForUpload) return
+          try {
+            const response = await staffApi.uploadStaffDocuments(staffForUpload.id, files, category)
+            if (response.success) {
+              toast({
+                title: "Documents Uploaded",
+                description: `${files.length} document(s) uploaded successfully`,
+              })
+              // Refresh staff list
+              if (user?.company_id) {
+                dispatch(fetchStaffByCompany({ companyId: user.company_id }))
+              } else {
+                dispatch(fetchStaff())
+              }
+            }
+          } catch (error: any) {
+            const errorMessage = error?.response?.data?.message || error?.message || "Failed to upload documents"
+            toast({
+              title: "Upload Failed",
+              description: errorMessage,
+              variant: "destructive",
+            })
+            throw error
+          }
+        }}
+        title="Upload Staff Documents"
+        description="Select a category and upload documents for this staff member"
       />
     </ProtectedRoute>
   )

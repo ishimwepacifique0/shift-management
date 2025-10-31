@@ -1,7 +1,9 @@
 {
   "/scheduler/page": "app/scheduler/page.js",
-  "/staff/page": "app/staff/page.js",
-  "/settings/page": "app/settings/page.js",
+  "/price-books/page": "app/price-books/page.js",
+  "/care-services/page": "app/care-services/page.js",
   "/shifts/page": "app/shifts/page.js",
-  "/shift-types/page": "app/shift-types/page.js"
+  "/dashboard/page": "app/dashboard/page.js",
+  "/staff/page": "app/staff/page.js",
+  "/staff/[id]/page": "app/staff/[id]/page.js"
 }

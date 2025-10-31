@@ -71,5 +71,20 @@ export const clientApi = {
   deleteClient: async (id: number): Promise<ApiResponse<null>> => {
     const response = await apiClient.delete(`${PathVariable.CLIENT_BY_ID}/${id}`)
     return response.data
+  },
+
+  // Upload documents for client
+  uploadClientDocuments: async (id: number, files: File[], category: string): Promise<ApiResponse<Client>> => {
+    const formData = new FormData()
+    files.forEach(file => {
+      formData.append('documents', file)
+    })
+    formData.append('category', category)
+    const response = await apiClient.post(`${PathVariable.CLIENT_BY_ID}/${id}/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
   }
 }

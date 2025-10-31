@@ -66,7 +66,7 @@ interface ShiftWithDetails {
     assignment_status: "offered" | "accepted" | "declined" | "replaced"
     assigned_at?: string
     notes?: string
-    staff: {
+    staff?: {
       id: number
       user: {
         first_name: string
@@ -109,13 +109,16 @@ export default function ShiftsPage() {
       setLoading(true)
       
       if (user?.company_id) {
+        // Use company-specific endpoints to ensure proper filtering
+        const shiftFilters = { limit: 100 }
         await Promise.all([
-          dispatch(fetchShifts({ company_id: user.company_id, limit: 100 })),
-          dispatch(fetchShiftTypes()),
+          dispatch(fetchShifts({ company_id: user.company_id, ...shiftFilters })),
+          dispatch(fetchShiftTypes(user.company_id)),
           dispatch(fetchStaffByCompany({ companyId: user.company_id })),
           dispatch(fetchClientsByCompany({ companyId: user.company_id }))
         ])
       } else {
+        // For SUPER_ADMIN users without company_id, fetch all shifts
         await Promise.all([
           dispatch(fetchShifts({ limit: 100 })),
           dispatch(fetchShiftTypes()),
@@ -155,6 +158,9 @@ export default function ShiftsPage() {
   }
 
   const filteredShifts = shifts?.filter((shift) => {
+    // Always filter by company if user has company_id
+    const matchesCompany = !user?.company_id || shift.company_id === user.company_id
+    
     const matchesSearch = searchTerm === "" || 
       shift.client?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       shift.client?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -162,7 +168,7 @@ export default function ShiftsPage() {
     
     const matchesStatus = statusFilter === "all" || shift.status === statusFilter
     
-    return matchesSearch && matchesStatus
+    return matchesCompany && matchesSearch && matchesStatus
   }) || []
 
   const handleViewDetails = (shift: ShiftWithDetails) => {
@@ -393,24 +399,26 @@ export default function ShiftsPage() {
                           {shift.shift_staff_assignments?.length ? (
                             <div className="space-y-1">
                               {shift.shift_staff_assignments.map((assignment) => (
-                                <div 
-                                  key={assignment.id} 
-                                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
-                                  onClick={() => handleReplaceStaffClick(shift, assignment)}
-                                >
-                                  <Avatar className="h-6 w-6">
-                                    <AvatarImage src={assignment.staff.user.profile_picture} />
-                                    <AvatarFallback className="text-xs">
-                                      {assignment.staff.user.first_name[0]}{assignment.staff.user.last_name[0]}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-sm">
-                                    {assignment.staff.user.first_name} {assignment.staff.user.last_name}
-                                  </span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {assignment.assignment_status}
-                                  </Badge>
-                                </div>
+                                assignment.staff && (
+                                  <div 
+                                    key={assignment.id} 
+                                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+                                    onClick={() => handleReplaceStaffClick(shift, assignment)}
+                                  >
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarImage src={assignment.staff.user.profile_picture} />
+                                      <AvatarFallback className="text-xs">
+                                        {assignment.staff.user.first_name[0]}{assignment.staff.user.last_name[0]}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm">
+                                      {assignment.staff.user.first_name} {assignment.staff.user.last_name}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {assignment.assignment_status}
+                                    </Badge>
+                                  </div>
+                                )
                               ))}
                             </div>
                           ) : (
@@ -493,33 +501,35 @@ export default function ShiftsPage() {
                   {selectedShift.shift_staff_assignments?.length ? (
                     <div className="mt-2 space-y-2">
                       {selectedShift.shift_staff_assignments.map((assignment) => (
-                        <div 
-                          key={assignment.id} 
-                          className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
-                          onClick={() => {
-                            setIsDetailsOpen(false)
-                            handleReplaceStaffClick(selectedShift, assignment)
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={assignment.staff.user.profile_picture} />
-                              <AvatarFallback>
-                                {assignment.staff.user.first_name[0]}{assignment.staff.user.last_name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">
-                                {assignment.staff.user.first_name} {assignment.staff.user.last_name}
-                              </p>
-                              <p className="text-sm text-slate-500">{assignment.staff.user.email}</p>
+                        assignment.staff && (
+                          <div 
+                            key={assignment.id} 
+                            className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+                            onClick={() => {
+                              setIsDetailsOpen(false)
+                              handleReplaceStaffClick(selectedShift, assignment)
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={assignment.staff.user.profile_picture} />
+                                <AvatarFallback>
+                                  {assignment.staff.user.first_name[0]}{assignment.staff.user.last_name[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">
+                                  {assignment.staff.user.first_name} {assignment.staff.user.last_name}
+                                </p>
+                                <p className="text-sm text-slate-500">{assignment.staff.user.email}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                            <Badge variant="outline">{assignment.assignment_status}</Badge>
+                              <span className="text-xs text-slate-500">Click to replace</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                          <Badge variant="outline">{assignment.assignment_status}</Badge>
-                            <span className="text-xs text-slate-500">Click to replace</span>
-                          </div>
-                        </div>
+                        )
                       ))}
                     </div>
                   ) : (
@@ -626,24 +636,26 @@ export default function ShiftsPage() {
             {selectedShift && assignmentToReplace && (
               <div className="space-y-4">
                 {/* Current Assignment Info */}
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <Label className="text-sm font-medium text-slate-600">Current Assignment</Label>
-                  <div className="flex items-center gap-3 mt-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={assignmentToReplace.staff.user.profile_picture} />
-                      <AvatarFallback>
-                        {assignmentToReplace.staff.user.first_name[0]}{assignmentToReplace.staff.user.last_name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">
-                        {assignmentToReplace.staff.user.first_name} {assignmentToReplace.staff.user.last_name}
-                      </p>
-                      <p className="text-sm text-slate-500">{assignmentToReplace.staff.user.email}</p>
+                {assignmentToReplace.staff && (
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <Label className="text-sm font-medium text-slate-600">Current Assignment</Label>
+                    <div className="flex items-center gap-3 mt-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={assignmentToReplace.staff.user.profile_picture} />
+                        <AvatarFallback>
+                          {assignmentToReplace.staff.user.first_name[0]}{assignmentToReplace.staff.user.last_name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">
+                          {assignmentToReplace.staff.user.first_name} {assignmentToReplace.staff.user.last_name}
+                        </p>
+                        <p className="text-sm text-slate-500">{assignmentToReplace.staff.user.email}</p>
+                      </div>
+                      <Badge variant="outline">{assignmentToReplace.assignment_status}</Badge>
                     </div>
-                    <Badge variant="outline">{assignmentToReplace.assignment_status}</Badge>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <Label>Select New Staff Member</Label>

@@ -11,6 +11,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useDispatch, useSelector } from "react-redux"
 import { createCompanyStaff } from "@/feature/staff/staffSlice"
 import { AppDispatch, RootState } from "@/lib/store"
@@ -30,7 +37,7 @@ const formSchema = z.object({
   max_hours_per_week: z.number().min(0, { message: "Max hours must be positive." }).optional(),
   availability_notes: z.string().optional(),
   hire_date: z.string().optional(),
-  documents: z.string().optional(),
+  employment_type: z.enum(['PART_TIME', 'FULL_TIME', 'CASUAL', 'CONTRACTOR', 'OTHER']).optional(),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -62,7 +69,7 @@ export function AddStaffDrawer({
       max_hours_per_week: 40,
       availability_notes: "",
       hire_date: "",
-      documents: "",
+      employment_type: undefined,
     },
   })
 
@@ -91,7 +98,7 @@ export function AddStaffDrawer({
         max_hours_per_week: values.max_hours_per_week || undefined,
         availability_notes: values.availability_notes || undefined,
         hire_date: values.hire_date ? new Date(values.hire_date).toISOString() : undefined,
-        documents: values.documents || undefined,
+        employment_type: values.employment_type || undefined,
       }
       
       console.log('Staff creation data:', staffData)
@@ -176,7 +183,7 @@ export function AddStaffDrawer({
         max_hours_per_week: 40,
         availability_notes: "",
         hire_date: "",
-        documents: "",
+        employment_type: undefined,
       })
     }
   }, [isOpen, form])
@@ -345,16 +352,24 @@ export function AddStaffDrawer({
 
             <FormField
               control={form.control}
-              name="availability_notes"
+              name="employment_type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Availability Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="e.g., Available weekdays 9-5, weekends as needed"
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormLabel>Employment Type</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select employment type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="FULL_TIME">Full Time</SelectItem>
+                      <SelectItem value="PART_TIME">Part Time</SelectItem>
+                      <SelectItem value="CASUAL">Casual</SelectItem>
+                      <SelectItem value="CONTRACTOR">Contractor</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -362,13 +377,13 @@ export function AddStaffDrawer({
 
             <FormField
               control={form.control}
-              name="documents"
+              name="availability_notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Documents</FormLabel>
+                  <FormLabel>Availability Notes</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="URL or reference to documents"
+                    <Textarea
+                      placeholder="e.g., Available weekdays 9-5, weekends as needed"
                       {...field}
                     />
                   </FormControl>
