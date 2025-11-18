@@ -25,16 +25,46 @@ const initialState: AuthState = {
 
 export const login = createAsyncThunk(
   "auth/login",
-  async (credentials: { email: string; password: string }) => {
-    const response = await authApi.login(credentials)
-    if (response.success) {
-      return { 
-        token: response.data.token, 
-        user: response.data.user,
-        permissions: response.data.permissions
+  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
+    try {
+      const response = await authApi.login(credentials)
+      if (response.success && response.data) {
+        const user = response.data.user
+        const token = response.data.token
+        const permissions = response.data.permissions || []
+
+        // Validate user access
+        if (!user) {
+          return rejectWithValue("User data not found")
+        }
+
+        // Check if user has admin user_type
+        if (!user.user_type || user.user_type.toUpperCase() !== "ADMIN") {
+          return rejectWithValue("You no longer have access. Admin privileges required.")
+        }
+
+        // Check if user has company (company_id must exist and not be null)
+        if (!user.company_id || user.company_id === null) {
+          return rejectWithValue("You no longer have access. No company associated with your account.")
+        }
+
+        return { 
+          token, 
+          user,
+          permissions
+        }
       }
+      // If response is not successful, extract error message
+      const errorMessage = response.error || response.message || "Login failed"
+      return rejectWithValue(errorMessage)
+    } catch (error: any) {
+      // Handle any unexpected errors
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error?.message || 
+                          "Login failed"
+      return rejectWithValue(errorMessage)
     }
-    throw new Error(response.message || "Login failed")
   },
 )
 
@@ -42,8 +72,6 @@ export const logout = createAsyncThunk("auth/logout", async () => {
   try {
     await authApi.logout()
   } catch (error) {
-    // Even if logout fails on server, we should clear local state
-    console.error('Logout error:', error)
   }
   return Promise.resolve()
 })
@@ -137,8 +165,10 @@ const authSlice = createSlice({
         }
       })
       .addCase(getCurrentUser.fulfilled, (state, action) => {
-        state.user = action.payload
-        state.isAuthenticated = true
+        if (action.payload) {
+          state.user = action.payload
+          state.isAuthenticated = true
+        }
       })
       .addCase(getCurrentUser.rejected, (state) => {
         state.isAuthenticated = false

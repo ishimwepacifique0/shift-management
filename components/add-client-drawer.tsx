@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "react-toastify"
 import { useDispatch, useSelector } from "react-redux"
 import { RootState, AppDispatch } from "@/lib/store"
 import { createClient } from "@/feature/clients/clientSlice"
@@ -48,10 +49,10 @@ type AddClientFormData = z.infer<typeof addClientSchema>
 interface AddClientDrawerProps {
   isOpen: boolean
   onClose: () => void
+  onSuccess?: () => void
 }
 
-export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
-  const { toast } = useToast()
+export function AddClientDrawer({ isOpen, onClose, onSuccess }: AddClientDrawerProps) {
   const dispatch = useDispatch<AppDispatch>()
   const { status } = useSelector((state: RootState) => state.clients)
   const { user } = useSelector((state: RootState) => state.auth)
@@ -104,35 +105,50 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
       
       console.log('Client creation data:', clientData)
       
-      await dispatch(createClient(clientData)).unwrap()
+      const result = await dispatch(createClient(clientData)).unwrap()
       
-      toast({
-        title: "Client Created",
-        description: `${values.first_name} ${values.last_name} has been successfully added to your client list.`,
-      })
+      // Use backend message if available, otherwise use custom message
+      const successMessage = result?.message || `${values.first_name} ${values.last_name} has been successfully added to your client list.`
+      
+      toast.success(successMessage)
       
       form.reset()
       onClose()
+      // Call onSuccess callback to refresh the clients list
+      onSuccess?.()
     } catch (error: any) {
       console.error('Client creation error:', error)
       
       // Extract the real error message from the response
+      // Priority: error.error > error.message (if not generic) > error.response.data.error > error.response.data.message
       let errorMessage = "Failed to create client"
       
-      if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error?.message) {
-        errorMessage = error.message
+      // Check rejectWithValue structure (when using unwrap())
+      if (error?.error && typeof error.error === 'string') {
+        errorMessage = error.error
+      } else if (error?.message && typeof error.message === 'string') {
+        // Only use message if it's not a generic axios error
+        if (!error.message.includes("Request failed with status code") && 
+            !error.message.includes("Request failed")) {
+          errorMessage = error.message
+        }
+      }
+      
+      // Check axios error structure
+      if (errorMessage === "Failed to create client") {
+        if (error?.response?.data?.error) {
+          errorMessage = error.response.data.error
+        } else if (error?.response?.data?.message) {
+          errorMessage = error.response.data.message
+        } else if (error?.data?.error) {
+          errorMessage = error.data.error
+        } else if (error?.data?.message) {
+          errorMessage = error.data.message
+        }
       }
       
       // Show the actual error message from the backend
-      toast({
-        title: "Client Creation Failed",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      toast.error(errorMessage)
     }
   }
 
@@ -146,7 +162,15 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
           </SheetDescription>
         </SheetHeader>
         
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto relative">
+          {status === "loading" && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Creating client...</p>
+              </div>
+            </div>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-4">
@@ -162,7 +186,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                         <FormItem>
                           <FormLabel>First Name *</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter first name" {...field} />
+                            <Input placeholder="Enter first name" {...field} disabled={status === "loading"} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -176,7 +200,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                         <FormItem>
                           <FormLabel>Last Name *</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter last name" {...field} />
+                            <Input placeholder="Enter last name" {...field} disabled={status === "loading"} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -192,7 +216,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                         <FormItem>
                           <FormLabel>Date of Birth</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input type="date" {...field} disabled={status === "loading"} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -206,7 +230,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                         <FormItem>
                           <FormLabel>Gender</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., Male, Female, Other" {...field} />
+                            <Input placeholder="e.g., Male, Female, Other" {...field} disabled={status === "loading"} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -226,7 +250,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="Enter email address" {...field} />
+                          <Input type="email" placeholder="Enter email address" {...field} disabled={status === "loading"} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -240,7 +264,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                       <FormItem>
                         <FormLabel>Phone</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter phone number" {...field} />
+                          <Input placeholder="Enter phone number" {...field} disabled={status === "loading"} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -253,9 +277,9 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Enter full address" {...field} />
-                        </FormControl>
+                          <FormControl>
+                            <Textarea placeholder="Enter full address" {...field} disabled={status === "loading"} />
+                          </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -273,7 +297,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                       <FormItem>
                         <FormLabel>NDIS Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter NDIS number" {...field} />
+                          <Input placeholder="Enter NDIS number" {...field} disabled={status === "loading"} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -292,7 +316,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                       <FormItem>
                         <FormLabel>Emergency Contact Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter emergency contact name" {...field} />
+                          <Input placeholder="Enter emergency contact name" {...field} disabled={status === "loading"} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -306,7 +330,7 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                       <FormItem>
                         <FormLabel>Emergency Contact Phone</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter emergency contact phone" {...field} />
+                          <Input placeholder="Enter emergency contact phone" {...field} disabled={status === "loading"} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -324,13 +348,14 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Additional Notes</FormLabel>
-                        <FormControl>
-                          <Textarea 
+                          <FormControl>
+                            <Textarea 
                             placeholder="Enter any additional notes, care requirements, or special instructions"
                             rows={4}
-                            {...field} 
+                            {...field}
+                            disabled={status === "loading"}
                           />
-                        </FormControl>
+                          </FormControl>
                         <FormDescription>
                           Include any special care requirements, medical conditions, or other important information.
                         </FormDescription>
@@ -354,7 +379,14 @@ export function AddClientDrawer({ isOpen, onClose }: AddClientDrawerProps) {
                   type="submit"
                   disabled={status === "loading"}
                 >
-                  {status === "loading" ? "Creating..." : "Create Client"}
+                  {status === "loading" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Client"
+                  )}
                 </Button>
               </SheetFooter>
             </form>

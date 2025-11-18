@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "react-toastify"
 import { useDispatch, useSelector } from "react-redux"
 import { RootState, AppDispatch } from "@/lib/store"
 import { updateClient } from "@/feature/clients/clientSlice"
@@ -51,10 +51,10 @@ interface EditClientDrawerProps {
   client: Client | null
   isOpen: boolean
   onClose: () => void
+  onSuccess?: () => void
 }
 
-export function EditClientDrawer({ client, isOpen, onClose }: EditClientDrawerProps) {
-  const { toast } = useToast()
+export function EditClientDrawer({ client, isOpen, onClose, onSuccess }: EditClientDrawerProps) {
   const dispatch = useDispatch<AppDispatch>()
   const { status } = useSelector((state: RootState) => state.clients)
 
@@ -117,35 +117,50 @@ export function EditClientDrawer({ client, isOpen, onClose }: EditClientDrawerPr
 
       console.log('Updating client with data:', updateData)
       
-      await dispatch(updateClient({ id: client.id, data: updateData })).unwrap()
+      const result = await dispatch(updateClient({ id: client.id, data: updateData })).unwrap()
       
-      toast({
-        title: "Client Updated",
-        description: `${values.first_name} ${values.last_name}'s information has been successfully updated.`,
-      })
+      // Use backend message if available, otherwise use custom message
+      const successMessage = result?.message || `${values.first_name} ${values.last_name}'s information has been successfully updated.`
+      
+      toast.success(successMessage)
       
       form.reset()
       onClose()
+      // Call onSuccess callback to refresh the clients list
+      onSuccess?.()
     } catch (error: any) {
       console.error('Client update error:', error)
       
       // Extract the real error message from the response
+      // Priority: error.error > error.message (if not generic) > error.response.data.error > error.response.data.message
       let errorMessage = "Failed to update client"
       
-      if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error?.message) {
-        errorMessage = error.message
+      // Check rejectWithValue structure (when using unwrap())
+      if (error?.error && typeof error.error === 'string') {
+        errorMessage = error.error
+      } else if (error?.message && typeof error.message === 'string') {
+        // Only use message if it's not a generic axios error
+        if (!error.message.includes("Request failed with status code") && 
+            !error.message.includes("Request failed")) {
+          errorMessage = error.message
+        }
+      }
+      
+      // Check axios error structure
+      if (errorMessage === "Failed to update client") {
+        if (error?.response?.data?.error) {
+          errorMessage = error.response.data.error
+        } else if (error?.response?.data?.message) {
+          errorMessage = error.response.data.message
+        } else if (error?.data?.error) {
+          errorMessage = error.data.error
+        } else if (error?.data?.message) {
+          errorMessage = error.data.message
+        }
       }
       
       // Show the actual error message from the backend
-      toast({
-        title: "Client Update Failed",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      toast.error(errorMessage)
     }
   }
 

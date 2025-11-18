@@ -63,34 +63,80 @@ export const fetchClientById = createAsyncThunk(
 
 export const createClient = createAsyncThunk(
   "clients/createClient",
-  async (data: CreateClientData) => {
-    const response = await clientApi.createClient(data)
-    if (response.success) {
-      return response.data
+  async (data: CreateClientData, { rejectWithValue }) => {
+    try {
+      const response = await clientApi.createClient(data)
+      if (response.success) {
+        // Return both data and message from backend
+        return { data: response.data, message: response.message }
+      }
+      // If response is not successful, extract error message
+      const errorMessage = response.error || response.message || "Failed to create client"
+      return rejectWithValue({ message: errorMessage, error: response.error || errorMessage })
+    } catch (error: any) {
+      // Extract error message from axios error response
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error?.message || 
+                          "Failed to create client"
+      return rejectWithValue({ 
+        message: errorMessage, 
+        error: error?.response?.data?.error || errorMessage
+      })
     }
-    throw new Error(response.message || "Failed to create client")
   }
 )
 
 export const updateClient = createAsyncThunk(
   "clients/updateClient",
-  async ({ id, data }: { id: number; data: UpdateClientData }) => {
-    const response = await clientApi.updateClient(id, data)
-    if (response.success) {
-      return response.data
+  async ({ id, data }: { id: number; data: UpdateClientData }, { rejectWithValue }) => {
+    try {
+      const response = await clientApi.updateClient(id, data)
+      if (response.success) {
+        // Return both data and message from backend
+        return { data: response.data, message: response.message }
+      }
+      // If response is not successful, extract error message
+      const errorMessage = response.error || response.message || "Failed to update client"
+      return rejectWithValue({ message: errorMessage, error: response.error || errorMessage })
+    } catch (error: any) {
+      // Extract error message from axios error response
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error?.message || 
+                          "Failed to update client"
+      return rejectWithValue({ 
+        message: errorMessage, 
+        error: error?.response?.data?.error || errorMessage
+      })
     }
-    throw new Error(response.message || "Failed to update client")
   }
 )
 
 export const deleteClient = createAsyncThunk(
   "clients/deleteClient",
-  async (id: number) => {
-    const response = await clientApi.deleteClient(id)
-    if (response.success) {
-      return id
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const response = await clientApi.deleteClient(id)
+      if (response.success) {
+        // Return both id and message from backend
+        return { id, message: response.message }
+      }
+      // If response is not successful, extract error message
+      const errorMessage = response.error || response.message || "Failed to delete client"
+      return rejectWithValue({ message: errorMessage, error: response.error || errorMessage })
+    } catch (error: any) {
+      // Extract error message from axios error response
+      // The backend returns error in error.response.data.error
+      const errorMessage = error?.response?.data?.error || 
+                          error?.response?.data?.message || 
+                          error?.message || 
+                          "Failed to delete client"
+      return rejectWithValue({ 
+        message: errorMessage, 
+        error: error?.response?.data?.error || errorMessage
+      })
     }
-    throw new Error(response.message || "Failed to delete client")
   }
 )
 
@@ -116,8 +162,10 @@ const clientSlice = createSlice({
       })
       .addCase(fetchClients.fulfilled, (state, action) => {
         state.status = "succeeded"
-        state.clients = action.payload.data
-        state.pagination = action.payload.pagination
+        if (action.payload) {
+          state.clients = action.payload.data || []
+          state.pagination = action.payload.pagination || null
+        }
       })
       .addCase(fetchClients.rejected, (state, action) => {
         state.status = "failed"
@@ -129,8 +177,10 @@ const clientSlice = createSlice({
       })
       .addCase(fetchClientsByCompany.fulfilled, (state, action) => {
         state.status = "succeeded"
-        state.clients = action.payload.data || []
-        state.pagination = action.payload.pagination
+        if (action.payload) {
+          state.clients = action.payload.data || []
+          state.pagination = action.payload.pagination || null
+        }
       })
       .addCase(fetchClientsByCompany.rejected, (state, action) => {
         state.status = "failed"
@@ -142,34 +192,62 @@ const clientSlice = createSlice({
       })
       .addCase(fetchClientById.fulfilled, (state, action) => {
         state.status = "succeeded"
-        state.selectedClient = action.payload
+        state.selectedClient = action.payload || null
       })
       .addCase(fetchClientById.rejected, (state, action) => {
         state.status = "failed"
         state.error = action.error.message || "Failed to fetch client"
       })
+      .addCase(createClient.pending, (state) => {
+        state.status = "loading"
+        state.error = null
+      })
       .addCase(createClient.fulfilled, (state, action) => {
-        state.clients.unshift(action.payload)
-        if (state.pagination) {
-          state.pagination.total += 1
+        state.status = "succeeded"
+        if (action.payload?.data) {
+          state.clients.unshift(action.payload.data)
+          if (state.pagination) {
+            state.pagination.total += 1
+          }
         }
+      })
+      .addCase(createClient.rejected, (state, action) => {
+        state.status = "failed"
+        // Extract error message from rejectWithValue payload or error message
+        const errorPayload = action.payload as { message?: string; error?: string } | undefined
+        state.error = errorPayload?.error || errorPayload?.message || action.error.message || "Failed to create client"
+      })
+      .addCase(updateClient.pending, (state) => {
+        state.status = "loading"
+        state.error = null
       })
       .addCase(updateClient.fulfilled, (state, action) => {
-        const index = state.clients.findIndex(client => client.id === action.payload.id)
-        if (index !== -1) {
-          state.clients[index] = action.payload
-        }
-        if (state.selectedClient?.id === action.payload.id) {
-          state.selectedClient = action.payload
+        state.status = "succeeded"
+        if (action.payload?.data) {
+          const index = state.clients.findIndex(client => client.id === action.payload!.data!.id)
+          if (index !== -1) {
+            state.clients[index] = action.payload.data
+          }
+          if (state.selectedClient?.id === action.payload.data.id) {
+            state.selectedClient = action.payload.data
+          }
         }
       })
+      .addCase(updateClient.rejected, (state, action) => {
+        state.status = "failed"
+        // Extract error message from rejectWithValue payload or error message
+        const errorPayload = action.payload as { message?: string; error?: string } | undefined
+        state.error = errorPayload?.error || errorPayload?.message || action.error.message || "Failed to update client"
+      })
       .addCase(deleteClient.fulfilled, (state, action) => {
-        state.clients = state.clients.filter(client => client.id !== action.payload)
-        if (state.pagination) {
-          state.pagination.total -= 1
-        }
-        if (state.selectedClient?.id === action.payload) {
-          state.selectedClient = null
+        if (action.payload?.id !== undefined) {
+          state.clients = state.clients.filter(client => client.id !== action.payload.id)
+          if (state.pagination) {
+            state.pagination.total -= 1
+          }
+          if (state.selectedClient?.id === action.payload.id) {
+            state.selectedClient = null
+          }
         }
       })
   },

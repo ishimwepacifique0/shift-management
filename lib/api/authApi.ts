@@ -31,8 +31,18 @@ export interface ChangePasswordData {
 
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<ApiResponse<LoginResponse>> => {
-    const response = await apiClient.post(PathVariable.LOGIN, credentials)
-    return response.data
+    try {
+      const response = await apiClient.post(PathVariable.LOGIN, credentials)
+      return response.data
+    } catch (error: any) {
+      // Extract backend error message from axios error response
+      if (error.response?.data) {
+        // Return the error response as-is so it can be handled properly
+        return error.response.data
+      }
+      // If no response data, throw a generic error
+      throw new Error(error.message || "Login failed")
+    }
   },
 
   register: async (data: RegisterData): Promise<ApiResponse<LoginResponse>> => {

@@ -91,6 +91,12 @@ export const staffApi = {
     return response.data
   },
 
+  // Delete company staff (hard delete - removes both staff and user)
+  deleteCompanyStaff: async (id: number): Promise<ApiResponse<null>> => {
+    const response = await apiClient.delete(`${PathVariable.COMPANY_STAFF}/${id}`)
+    return response.data
+  },
+
   // Company-specific staff creation (automatically uses user's company_id)
   createCompanyStaff: async (data: CreateCompanyStaffData): Promise<ApiResponse<Staff>> => {
     const response = await apiClient.post(PathVariable.COMPANY_STAFF, data)

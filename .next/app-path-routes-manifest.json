@@ -1,0 +1,20 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/care-services/page": "/care-services",
+  "/clients/[id]/page": "/clients/[id]",
+  "/clients/page": "/clients",
+  "/login/page": "/login",
+  "/dashboard/page": "/dashboard",
+  "/logout/page": "/logout",
+  "/page": "/",
+  "/price-books/page": "/price-books",
+  "/scheduler/page": "/scheduler",
+  "/service-types/page": "/service-types",
+  "/settings/page": "/settings",
+  "/shift-services/page": "/shift-services",
+  "/shift-types/page": "/shift-types",
+  "/shifts/page": "/shifts",
+  "/staff/[id]/page": "/staff/[id]",
+  "/reports/page": "/reports",
+  "/staff/page": "/staff"
+}

@@ -44,12 +44,15 @@ apiClient.interceptors.response.use(
       // Don't auto-logout, let the component handle it
     }
     
-    // Extract error message from response data
-    const message = error?.response?.data?.message || 
-                   error?.response?.data?.error || 
-                   error?.message || 
-                   "Request failed"
+    // Preserve the original error structure so components can access error.response.data
+    // This allows components to extract error messages from different locations
+    if (error.response) {
+      // Keep the original axios error structure so error.response.data is accessible
+      return Promise.reject(error)
+    }
     
+    // For non-response errors (network errors, etc.), create a new error
+    const message = error?.message || "Request failed"
     return Promise.reject(new Error(message))
   },
 )

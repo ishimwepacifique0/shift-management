@@ -151,8 +151,9 @@ export interface Invoice {
 // API Response types
 export interface ApiResponse<T> {
   success: boolean
-  data: T
-  message: string
+  data?: T
+  message?: string
+  error?: string
   timestamp: string
 }
 

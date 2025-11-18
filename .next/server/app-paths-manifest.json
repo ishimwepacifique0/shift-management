@@ -1,9 +1,20 @@
 {
-  "/scheduler/page": "app/scheduler/page.js",
-  "/price-books/page": "app/price-books/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/care-services/page": "app/care-services/page.js",
-  "/shifts/page": "app/shifts/page.js",
+  "/clients/[id]/page": "app/clients/[id]/page.js",
+  "/clients/page": "app/clients/page.js",
+  "/login/page": "app/login/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/staff/page": "app/staff/page.js",
-  "/staff/[id]/page": "app/staff/[id]/page.js"
+  "/logout/page": "app/logout/page.js",
+  "/page": "app/page.js",
+  "/price-books/page": "app/price-books/page.js",
+  "/scheduler/page": "app/scheduler/page.js",
+  "/service-types/page": "app/service-types/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/shift-services/page": "app/shift-services/page.js",
+  "/shift-types/page": "app/shift-types/page.js",
+  "/shifts/page": "app/shifts/page.js",
+  "/staff/[id]/page": "app/staff/[id]/page.js",
+  "/reports/page": "app/reports/page.js",
+  "/staff/page": "app/staff/page.js"
 }

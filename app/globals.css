@@ -74,3 +74,33 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* React Toastify Custom Styles */
+.Toastify__toast-container {
+  z-index: 9999 !important;
+}
+
+.Toastify__toast {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.Toastify__toast--success {
+  background-color: #10b981;
+  color: white;
+}
+
+.Toastify__toast--error {
+  background-color: #ef4444;
+  color: white;
+}
+
+.Toastify__toast--info {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.Toastify__toast--warning {
+  background-color: #f59e0b;
+  color: white;
+}

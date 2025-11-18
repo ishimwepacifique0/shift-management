@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { login } from "@/feature/auth/authSlice"
-import { Loader2 } from "lucide-react"
+import { Loader2, Eye, EyeOff } from "lucide-react"
 import { RootState, AppDispatch } from "@/lib/store"
+import { toast } from "react-toastify"
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -22,7 +23,8 @@ const formSchema = z.object({
 export function LoginForm() {
   const router = useRouter()
   const dispatch = useDispatch<AppDispatch>()
-  const { status, error, isAuthenticated } = useSelector((state: RootState) => state.auth)
+  const { status, isAuthenticated, user } = useSelector((state: RootState) => state.auth)
+  const [showPassword, setShowPassword] = React.useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,17 +37,54 @@ export function LoginForm() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       await dispatch(login(values)).unwrap()
-      router.push("/")
-    } catch (error) {
-      // Error is handled by Redux state
+      // Navigation and company check will be handled in the useEffect
+    } catch (err: any) {
+      // Extract error message from Redux Toolkit rejectWithValue
+      // When using rejectWithValue, the error is the value itself
+      let errorMessage = "Login failed. Please check your credentials."
+      
+      if (err) {
+        // Handle string errors (from rejectWithValue)
+        if (typeof err === "string") {
+          errorMessage = err
+        }
+        // Handle Error object
+        else if (err instanceof Error) {
+          errorMessage = err.message
+        }
+        // Handle object with message property
+        else if (err.message) {
+          errorMessage = err.message
+        }
+        // Handle axios error response structure
+        else if (err.response?.data?.error) {
+          errorMessage = err.response.data.error
+        }
+        else if (err.response?.data?.message) {
+          errorMessage = err.response.data.message
+        }
+        // Handle nested error structure
+        else if (err.error) {
+          errorMessage = typeof err.error === "string" ? err.error : err.error.message || "Login failed"
+        }
+      }
+      
+      toast.error(errorMessage)
     }
   }
 
   React.useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/")
+    if (isAuthenticated && user) {
+      // Check if user has company before navigating
+      if (user.company_id && user.company_id !== null) {
+        router.push("/")
+        toast.success("Login successful. Welcome back!")
+      } else {
+        // User is authenticated but doesn't have a company
+        toast.error("You no longer have access. No company associated with your account.")
+      }
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, user, router])
 
   return (
     <Form {...form}>
@@ -70,16 +109,32 @@ export function LoginForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input placeholder="••••••••" {...field} type="password" />
+                <div className="relative">
+                  <Input 
+                    placeholder="••••••••" 
+                    {...field} 
+                    type={showPassword ? "text" : "password"}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-
-        {error && (
-          <p className="text-destructive text-sm font-medium">{error}</p>
-        )}
 
         <Button type="submit" className="w-full" disabled={status === "loading"}>
           {status === "loading" ? (
